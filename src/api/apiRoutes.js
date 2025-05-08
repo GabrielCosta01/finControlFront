@@ -15,13 +15,13 @@ export const ROUTES = {
   
   // Usuários
   USERS: {
-    BASE: `${BASE_PATH}/users`,
-    DETAIL: (id) => `${BASE_PATH}/users/${id}`,
+    BASE: `${BASE_PATH}/api/users`,
+    DETAIL: (id) => `${BASE_PATH}/api/users/${id}`,
   },
   
   // Categorias
   CATEGORIES: {
-    BASE: `${BASE_PATH}/categories`,
+    BASE: `${BASE_PATH}/api/categories`,
     DETAIL: (id) => `${BASE_PATH}/categories/${id}`,
   },
   
