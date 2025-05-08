@@ -31,3 +31,33 @@
 ├── /store                    # Redux Store e Slices
 ├── /styles                   # Arquivos de estilo
 └── /pages                    # Páginas estáticas ou outras lógicas
+
+```
+## Como Rodar o projeto
+
+#1. Clonar o repositório
+```plainttext
+git clone https://github.com/seu-usuario/finance-control.git
+cd finance-control
+```
+
+#2. Instalar dependências
+Instale as dependências utilizando npm ou yarn:
+```plainttext
+npm install
+```
+Ou, se você usa yarn:
+```plainttext
+yarn install
+```
+#3. Rodar o Projeto Localmente
+Execute o projeto em modo de desenvolvimento:
+```plainttext
+npm run dev
+```
+Ou, se usa yarn:
+```plainttext
+yarn dev
+```
+Isso abrirá o projeto no seu navegador em http://localhost:3000.
+
