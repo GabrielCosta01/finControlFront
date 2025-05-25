@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Bank, Safe, Payable, Receivable, Transaction, Category } from '@/api/entities/all';
 import { Button } from "@/components/ui/button";
