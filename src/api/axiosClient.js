@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080';
+// Usar a variável de ambiente ou fallback para localhost em desenvolvimento
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
