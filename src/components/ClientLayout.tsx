@@ -29,7 +29,7 @@ type MenuItemType = MenuItem | DividerItem;
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const user = useSelector((state: RootState) => state.user);
+  const auth = useSelector((state: RootState) => state.auth);
   const [currentPage, setCurrentPage] = useState('');
   const pathname = usePathname() || '';
 
@@ -58,6 +58,11 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     }
   }, [pathname]);
 
+  // Placeholder para informações do usuário
+  const userInitial = 'U';
+  const userName = 'Usuário';
+  const userEmail = 'usuario@exemplo.com';
+
   return (
     <div className="min-h-screen bg-gray-50">
       {sidebarOpen && (
@@ -70,11 +75,11 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         </div>
         <div className="p-4 border-b flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-blue-600 font-medium">{user?.fullName?.[0] || 'U'}</span>
+            <span className="text-blue-600 font-medium">{userInitial}</span>
           </div>
           <div>
-            <p className="font-medium text-gray-900">{user?.fullName}</p>
-            <p className="text-sm text-gray-500">{user?.email}</p>
+            <p className="font-medium text-gray-900">{userName}</p>
+            <p className="text-sm text-gray-500">{userEmail}</p>
           </div>
         </div>
         <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">

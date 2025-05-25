@@ -7,6 +7,7 @@ import {
   receivableReducer,
   transactionReducer,
 } from '../features';
+import authReducer from '../features/auth/authSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     payables: payableReducer,
     receivables: receivableReducer,
     transactions: transactionReducer,
+    auth: authReducer,
   },
 });
 

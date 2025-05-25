@@ -19,9 +19,36 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, FilterX, Search } from "lucide-react";
 
-export default function ReportFilters({ categories, banks, onFilter, onReset }) {
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+interface Category {
+  id: string;
+  description: string;
+}
+
+interface Bank {
+  id: string;
+  name: string;
+}
+
+interface FilterParams {
+  startDate: Date | null;
+  endDate: Date | null;
+  category: string;
+  bank: string;
+  status: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+interface ReportFiltersProps {
+  categories: Category[];
+  banks: Bank[];
+  onFilter: (params: FilterParams) => void;
+  onReset: () => void;
+}
+
+export default function ReportFilters({ categories, banks, onFilter, onReset }: ReportFiltersProps) {
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [category, setCategory] = useState("");
   const [bank, setBank] = useState("");
   const [status, setStatus] = useState("");
@@ -74,7 +101,7 @@ export default function ReportFilters({ categories, banks, onFilter, onReset }) 
               <Calendar
                 mode="single"
                 selected={startDate}
-                onSelect={setStartDate}
+                onSelect={(date: Date | null) => setStartDate(date)}
                 locale={ptBR}
               />
             </PopoverContent>
@@ -101,7 +128,7 @@ export default function ReportFilters({ categories, banks, onFilter, onReset }) 
               <Calendar
                 mode="single"
                 selected={endDate}
-                onSelect={setEndDate}
+                onSelect={(date: Date | null) => setEndDate(date)}
                 locale={ptBR}
               />
             </PopoverContent>
@@ -115,7 +142,7 @@ export default function ReportFilters({ categories, banks, onFilter, onReset }) 
               <SelectValue placeholder="Todas as categorias" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={null}>Todas as categorias</SelectItem>
+              <SelectItem value="">Todas as categorias</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.description}
@@ -132,7 +159,7 @@ export default function ReportFilters({ categories, banks, onFilter, onReset }) 
               <SelectValue placeholder="Todos os bancos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={null}>Todos os bancos</SelectItem>
+              <SelectItem value="">Todos os bancos</SelectItem>
               {banks.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -149,7 +176,7 @@ export default function ReportFilters({ categories, banks, onFilter, onReset }) 
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={null}>Todos os status</SelectItem>
+              <SelectItem value="">Todos os status</SelectItem>
               <SelectItem value="PENDING">Pendente</SelectItem>
               <SelectItem value="PAID">Pago</SelectItem>
               <SelectItem value="RECEIVED">Recebido</SelectItem>
