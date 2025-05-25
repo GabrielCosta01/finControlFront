@@ -6,6 +6,7 @@ import {
   payableReducer,
   receivableReducer,
   transactionReducer,
+  userReducer
 } from '../features';
 import authReducer from '../features/auth/authSlice';
 
@@ -18,6 +19,7 @@ export const store = configureStore({
     receivables: receivableReducer,
     transactions: transactionReducer,
     auth: authReducer,
+    users: userReducer,
   },
 });
 
