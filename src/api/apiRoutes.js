@@ -1,13 +1,15 @@
 // Definição de rotas da API para uso centralizado
-const API_VERSION = 'v1';
-const BASE_PATH = `/api/${API_VERSION}`;
+const BASE_PATH = `/api`;
 
 export const ROUTES = {
   // Autenticação
   AUTH: {
-    LOGIN: `${BASE_PATH}/auth/login`,
+    // Rotas de autenticação públicas (sem prefixo /api)
+    LOGIN: `/auth/login`,
+    REGISTER: `/auth/register`,
+    
+    // Rotas de autenticação protegidas (com prefixo /api)
     LOGOUT: `${BASE_PATH}/auth/logout`,
-    REGISTER: `${BASE_PATH}/auth/register`,
     FORGOT_PASSWORD: `${BASE_PATH}/auth/forgot-password`,
     RESET_PASSWORD: `${BASE_PATH}/auth/reset-password`,
     ME: `${BASE_PATH}/auth/me`,
@@ -15,13 +17,13 @@ export const ROUTES = {
   
   // Usuários
   USERS: {
-    BASE: `${BASE_PATH}/api/users`,
-    DETAIL: (id) => `${BASE_PATH}/api/users/${id}`,
+    BASE: `${BASE_PATH}/users`,
+    DETAIL: (id) => `${BASE_PATH}/users/${id}`,
   },
   
   // Categorias
   CATEGORIES: {
-    BASE: `${BASE_PATH}/api/categories`,
+    BASE: `${BASE_PATH}/categories`,
     DETAIL: (id) => `${BASE_PATH}/categories/${id}`,
   },
   

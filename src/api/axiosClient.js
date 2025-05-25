@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 // Usar a variável de ambiente ou fallback para localhost em desenvolvimento
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fincontrolback-n4bs.onrender.com';
+
+// Log para depuração da URL base
+console.log('API_BASE_URL:', API_BASE_URL);
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -9,6 +12,8 @@ const axiosClient = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
+  // Adicionar timeout de 10 segundos para evitar longas esperas
+  timeout: 10000,
 });
 
 /**
@@ -50,6 +55,9 @@ const processRequestData = (data) => {
 
 axiosClient.interceptors.request.use(
   (config) => {
+    // Log para depuração de requisições
+    console.log('Request URL:', `${config.baseURL}${config.url}`);
+    
     // Não adicionar token para rotas públicas ou rotas de autenticação
     if (!config.url.includes('/public/') && 
         !config.url.includes('/auth/reset-password')) {
@@ -72,6 +80,14 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('API Error:', error);
+    
+    // Tratamento específico para erro de timeout
+    if (error.code === 'ECONNABORTED') {
+      console.error('Timeout error: A requisição demorou muito para responder');
+      error.message = 'A conexão com o servidor demorou muito. Tente novamente mais tarde.';
+    }
+    
     if (error.response?.status === 401) {
       // Verifica se não é uma rota pública ou de autenticação
       if (!error.config?.url?.includes('/public/') && 

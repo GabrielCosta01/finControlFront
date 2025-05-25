@@ -7,6 +7,9 @@ import * as yup from 'yup';
 import { toast, ToastContainer } from 'react-toastify';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import 'react-toastify/dist/ReactToastify.css';
+import { login } from '@/api/auth';
+import { useDispatch } from 'react-redux';
+import { setToken } from '@/features/auth/authSlice';
 
 interface LoginFormInputs {
   email: string;
@@ -18,31 +21,49 @@ const schema = yup.object({
   password: yup.string().min(6, 'Senha deve ter ao menos 6 caracteres').required('Senha é obrigatória'),
 }).required();
 
+// Função auxiliar para formatar mensagens de erro
+const formatErrorMessage = (error: any) => {
+  if (error?.code === 'ERR_NETWORK') {
+    return 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet ou tente novamente mais tarde.';
+  }
+
+  if (error?.response?.data?.message) {
+    return error.response.data.message;
+  }
+
+  if (error?.message) {
+    return error.message;
+  }
+
+  return 'Ocorreu um erro inesperado. Tente novamente mais tarde.';
+};
+
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormInputs>({
+  const [isLoading, setIsLoading] = useState(false);
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
     resolver: yupResolver(schema),
   });
   const router = useRouter();
+  const dispatch = useDispatch();
 
   const onSubmit = async (data: LoginFormInputs) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Erro ao autenticar');
-      }
-
+      setIsLoading(true);
+      const response = await login(data);
+      
+      // Salvar o token no localStorage e no Redux
+      localStorage.setItem('authToken', response.token);
+      dispatch(setToken(response.token));
+      
       toast.success('Login realizado com sucesso!');
       router.push('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
-      toast.error(error.message || 'Ocorreu um erro inesperado');
+      const errorMessage = formatErrorMessage(error);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,10 +103,10 @@ const LoginPage = () => {
             </div>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium hover:bg-blue-700 transition disabled:opacity-50"
             >
-              {isSubmitting ? 'Entrando...' : 'Entrar'}
+              {isLoading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
           <p className="text-center text-sm mt-4">
@@ -94,7 +115,7 @@ const LoginPage = () => {
           </p>
         </div>
       </main>
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar closeOnClick pauseOnHover />
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} closeOnClick pauseOnHover />
     </>
   );
 };

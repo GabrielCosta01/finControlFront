@@ -5,3 +5,4 @@ export { default as safeReducer } from './safeSlice';
 export { default as payableReducer } from './payableSlice';
 export { default as receivableReducer } from './receivableSlice';
 export { default as transactionReducer } from './transactionSlice';
+export { default as userReducer } from './userSlice';
