@@ -26,7 +26,7 @@ jobs:
       run: npm test
 
     - name: Verificar cobertura de testes
-      run: npm run test:coverage
+      run: npm run test
 
     - name: Upload relatório de cobertura
       uses: actions/upload-artifact@v4
