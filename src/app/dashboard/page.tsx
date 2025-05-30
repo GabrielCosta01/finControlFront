@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bank, Safe, Payable, Receivable, Transaction } from '@/api/entities/all';
+import { Bank, Vault, Expense, ExtraIncome } from '@/api/entities/all';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,93 +38,82 @@ interface BankData {
   balance: number;
 }
 
-interface SafeData {
+interface VaultData {
   id: string;
   name: string;
   balance: number;
   currency: string;
 }
 
-interface PayableData {
+interface ExpenseData {
   id: string;
   description: string;
-  amount_total: number;
+  amount: number;
   due_date: string;
   status: 'PENDING' | 'PAID' | 'OVERDUE';
 }
 
-interface ReceivableData {
-  id: string;
-  description: string;
-  amount_total: number;
-  due_date: string;
-  status: 'PENDING' | 'RECEIVED' | 'LATE';
-}
-
-interface TransactionData {
+interface ExtraIncomeData {
   id: string;
   description: string;
   amount: number;
-  transaction_date: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL';
+  date: string;
+  status: 'PENDING' | 'RECEIVED';
 }
 
 export default function Dashboard() {
   const [banks, setBanks] = useState<BankData[]>([]);
-  const [safes, setSafes] = useState<SafeData[]>([]);
-  const [payables, setPayables] = useState<PayableData[]>([]);
-  const [receivables, setReceivables] = useState<ReceivableData[]>([]);
-  const [transactions, setTransactions] = useState<TransactionData[]>([]);
+  const [vaults, setVaults] = useState<VaultData[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseData[]>([]);
+  const [extraIncomes, setExtraIncomes] = useState<ExtraIncomeData[]>([]);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    const [banksData, safesData, payablesData, receivablesData, transactionsData] = await Promise.all([
+    const [banksData, vaultsData, expensesData, extraIncomesData] = await Promise.all([
       Bank.list(),
-      Safe.list(),
-      Payable.list(),
-      Receivable.list(),
-      Transaction.list('-transaction_date')
+      Vault.list(),
+      Expense.list(),
+      ExtraIncome.list()
     ]);
     
     setBanks(banksData);
-    setSafes(safesData);
-    setPayables(payablesData);
-    setReceivables(receivablesData);
-    setTransactions(transactionsData);
+    setVaults(vaultsData);
+    setExpenses(expensesData);
+    setExtraIncomes(extraIncomesData);
   };
 
   const totalBankBalance = banks.reduce((total, bank) => total + bank.balance, 0);
-  const totalSafeBalance = safes.reduce((total, safe) => {
-    if (safe.currency === 'BRL') return total + safe.balance;
+  const totalVaultBalance = vaults.reduce((total, vault) => {
+    if (vault.currency === 'BRL') return total + vault.balance;
     return total;
   }, 0);
-  const totalBalance = totalBankBalance + totalSafeBalance;
+  const totalBalance = totalBankBalance + totalVaultBalance;
 
-  const totalPayables = payables
+  const totalExpenses = expenses
     .filter(p => p.status === 'PENDING')
-    .reduce((total, p) => total + p.amount_total, 0);
+    .reduce((total, p) => total + p.amount, 0);
 
-  const totalReceivables = receivables
+  const totalExtraIncomes = extraIncomes
     .filter(r => r.status === 'PENDING')
-    .reduce((total, r) => total + r.amount_total, 0);
+    .reduce((total, r) => total + r.amount, 0);
 
-  const projectedBalance = totalBalance - totalPayables + totalReceivables;
+  const projectedBalance = totalBalance - totalExpenses + totalExtraIncomes;
 
-  const recentTransactions = transactions.slice(0, 5);
-  const upcomingPayables = payables
+  const upcomingExpenses = expenses
     .filter(p => p.status === 'PENDING')
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
     .slice(0, 5);
-  const upcomingReceivables = receivables
+
+  const upcomingExtraIncomes = extraIncomes
     .filter(r => r.status === 'PENDING')
-    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-[1400px]">
+    <>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <div className="flex items-center gap-2">
@@ -174,7 +163,7 @@ export default function Dashboard() {
                 {new Intl.NumberFormat('pt-BR', {
                   style: 'currency',
                   currency: 'BRL'
-                }).format(totalPayables)}
+                }).format(totalExpenses)}
               </span>
             </div>
           </CardContent>
@@ -193,7 +182,7 @@ export default function Dashboard() {
                 {new Intl.NumberFormat('pt-BR', {
                   style: 'currency',
                   currency: 'BRL'
-                }).format(totalReceivables)}
+                }).format(totalExtraIncomes)}
               </span>
             </div>
           </CardContent>
@@ -262,26 +251,26 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            {safes.length === 0 ? (
+            {vaults.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 Nenhum cofre cadastrado
               </div>
             ) : (
               <div className="space-y-4">
-                {safes.map(safe => (
-                  <div key={safe.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                {vaults.map(vault => (
+                  <div key={vault.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <PiggyBank className="w-5 h-5 text-purple-500" />
                       <div>
-                        <span className="font-medium">{safe.name}</span>
-                        <span className="text-sm text-gray-500 ml-2">({safe.currency})</span>
+                        <span className="font-medium">{vault.name}</span>
+                        <span className="text-sm text-gray-500 ml-2">({vault.currency})</span>
                       </div>
                     </div>
                     <span className="font-bold">
-                      {new Intl.NumberFormat(safe.currency === 'BRL' ? 'pt-BR' : 'en-US', {
+                      {new Intl.NumberFormat(vault.currency === 'BRL' ? 'pt-BR' : 'en-US', {
                         style: 'currency',
-                        currency: safe.currency
-                      }).format(safe.balance)}
+                        currency: vault.currency
+                      }).format(vault.balance)}
                     </span>
                   </div>
                 ))}
@@ -301,45 +290,36 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            {recentTransactions.length === 0 ? (
+            {upcomingExpenses.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                Nenhuma transação recente
+                Nenhuma despesa pendente
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Descrição</TableHead>
-                    <TableHead>Data</TableHead>
+                    <TableHead>Vencimento</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentTransactions.map(transaction => (
-                    <TableRow key={transaction.id}>
+                  {upcomingExpenses.map(expense => (
+                    <TableRow key={expense.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          {transaction.type === 'DEPOSIT' ? (
-                            <ArrowUpCircle className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <ArrowDownCircle className="w-4 h-4 text-red-500" />
-                          )}
-                          {transaction.description}
+                          <ArrowDownCircle className="w-4 h-4 text-red-500" />
+                          {expense.description}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(transaction.transaction_date), "dd 'de' MMMM", { locale: ptBR })}
+                        {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
                       </TableCell>
-                      <TableCell className={
-                        transaction.type === 'DEPOSIT' 
-                          ? "text-green-600 font-medium text-right" 
-                          : "text-red-600 font-medium text-right"
-                      }>
-                        {transaction.type === 'DEPOSIT' ? "+" : "-"}
+                      <TableCell className="text-red-600 font-medium text-right">
                         {new Intl.NumberFormat('pt-BR', {
                           style: 'currency',
                           currency: 'BRL'
-                        }).format(transaction.amount)}
+                        }).format(expense.amount)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -353,13 +333,13 @@ export default function Dashboard() {
             <CardHeader className="border-b bg-gray-50/50">
               <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <ArrowDownCircle className="w-5 h-5 text-red-500" />
-                Próximos Pagamentos
+                Próximas Despesas
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              {upcomingPayables.length === 0 ? (
+              {upcomingExpenses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  Nenhum pagamento pendente
+                  Nenhuma despesa pendente
                 </div>
               ) : (
                 <Table>
@@ -371,22 +351,22 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {upcomingPayables.map(payable => (
-                      <TableRow key={payable.id}>
+                    {upcomingExpenses.map(expense => (
+                      <TableRow key={expense.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <ArrowDownCircle className="w-4 h-4 text-red-500" />
-                            {payable.description}
+                            {expense.description}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(payable.due_date), "dd 'de' MMMM", { locale: ptBR })}
+                          {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-red-600 font-medium text-right">
                           {new Intl.NumberFormat('pt-BR', {
                             style: 'currency',
                             currency: 'BRL'
-                          }).format(payable.amount_total)}
+                          }).format(expense.amount)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -400,40 +380,40 @@ export default function Dashboard() {
             <CardHeader className="border-b bg-gray-50/50">
               <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <ArrowUpCircle className="w-5 h-5 text-green-500" />
-                Próximos Recebimentos
+                Próximas Rendas Extras
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              {upcomingReceivables.length === 0 ? (
+              {upcomingExtraIncomes.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  Nenhum recebimento pendente
+                  Nenhuma renda extra pendente
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Descrição</TableHead>
-                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Data</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {upcomingReceivables.map(receivable => (
-                      <TableRow key={receivable.id}>
+                    {upcomingExtraIncomes.map(income => (
+                      <TableRow key={income.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <ArrowUpCircle className="w-4 h-4 text-green-500" />
-                            {receivable.description}
+                            {income.description}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(receivable.due_date), "dd 'de' MMMM", { locale: ptBR })}
+                          {format(new Date(income.date), "dd 'de' MMMM", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-green-600 font-medium text-right">
                           {new Intl.NumberFormat('pt-BR', {
                             style: 'currency',
                             currency: 'BRL'
-                          }).format(receivable.amount_total)}
+                          }).format(income.amount)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -444,6 +424,6 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 } 

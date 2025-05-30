@@ -2,72 +2,54 @@ import axiosClient from '../axiosClient';
 import { ROUTES } from '../apiRoutes';
 
 /**
- * Obtém a lista de categorias
- * @param {Object} params - Parâmetros para filtros
- * @returns {Promise} Promise com o resultado da requisição
+ * Lista todas as categorias do usuário autenticado
+ * @returns {Promise<Array>} Lista de categorias
  */
-export const getCategories = async (params = {}) => {
-  try {
-    const response = await axiosClient.get(ROUTES.CATEGORIES.BASE, { params });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+export const getCategories = async () => {
+  const response = await axiosClient.get(ROUTES.CATEGORIES.BASE);
+  return response.data;
 };
 
 /**
- * Obtém uma categoria específica pelo ID
+ * Busca uma categoria por ID
  * @param {string} id - ID da categoria
- * @returns {Promise} Promise com o resultado da requisição
+ * @returns {Promise<Object>} Dados da categoria
  */
 export const getCategory = async (id) => {
-  try {
-    const response = await axiosClient.get(ROUTES.CATEGORIES.DETAIL(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.get(ROUTES.CATEGORIES.DETAIL(id));
+  return response.data;
 };
 
 /**
- * Adiciona uma nova categoria
- * @param {Object} data - Dados da categoria a ser criada
- * @returns {Promise} Promise com o resultado da requisição
+ * Cria uma nova categoria
+ * @param {Object} data - Dados da categoria
+ * @param {string} data.name - Nome da categoria (obrigatório)
+ * @param {string} [data.description] - Descrição da categoria (opcional)
+ * @returns {Promise<Object>} Categoria criada
  */
 export const addCategory = async (data) => {
-  try {
-    const response = await axiosClient.post(ROUTES.CATEGORIES.BASE, data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.post(ROUTES.CATEGORIES.BASE, data);
+  return response.data;
 };
 
 /**
  * Atualiza uma categoria existente
  * @param {string} id - ID da categoria
- * @param {Object} data - Dados atualizados da categoria
- * @returns {Promise} Promise com o resultado da requisição
+ * @param {Object} data - Dados para atualização
+ * @param {string} [data.name] - Novo nome da categoria
+ * @param {string} [data.description] - Nova descrição da categoria
+ * @returns {Promise<Object>} Categoria atualizada
  */
 export const updateCategory = async (id, data) => {
-  try {
-    const response = await axiosClient.put(ROUTES.CATEGORIES.DETAIL(id), data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.put(ROUTES.CATEGORIES.DETAIL(id), data);
+  return response.data;
 };
 
 /**
  * Remove uma categoria
- * @param {string} id - ID da categoria a ser removida
- * @returns {Promise} Promise com o resultado da requisição
+ * @param {string} id - ID da categoria
+ * @returns {Promise<void>}
  */
 export const deleteCategory = async (id) => {
-  try {
-    const response = await axiosClient.delete(ROUTES.CATEGORIES.DETAIL(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  await axiosClient.delete(ROUTES.CATEGORIES.DETAIL(id));
 }; 

@@ -63,6 +63,7 @@ axiosClient.interceptors.request.use(
         !config.url.includes('/auth/reset-password')) {
       const token = localStorage.getItem('authToken');
       if (token) {
+        // Adiciona o prefixo Bearer ao token
         config.headers.Authorization = `Bearer ${token}`;
       }
     }

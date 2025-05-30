@@ -1,10 +1,9 @@
 import * as UserService from './services/UserService';
 import * as CategoryService from './services/CategoryService';
 import * as BankService from './services/BankService';
-import * as SafeService from './services/SafeService';
-import * as PayableService from './services/PayableService';
-import * as ReceivableService from './services/ReceivableService';
-import * as TransactionService from './services/TransactionService';
+import * as VaultService from './services/VaultService';
+import * as ExpenseService from './services/ExpenseService';
+import * as ExtraIncomeService from './services/ExtraIncomeService';
 
 /**
  * Entidade de Usuário
@@ -12,7 +11,6 @@ import * as TransactionService from './services/TransactionService';
 export const User = {
   list: UserService.getUsers,
   get: UserService.getUser,
-  create: UserService.addUser,
   update: UserService.updateUser,
   delete: UserService.deleteUser
 };
@@ -33,54 +31,39 @@ export const Category = {
  */
 export const Bank = {
   list: BankService.getBanks,
-  get: BankService.getBank,
   create: BankService.addBank,
   update: BankService.updateBank,
-  delete: BankService.deleteBank
+  delete: BankService.deleteBank,
+  clearIncomes: BankService.clearIncomes,
+  clearExpenses: BankService.clearExpenses
 };
 
 /**
  * Entidade de Cofre
  */
-export const Safe = {
-  list: SafeService.getSafes,
-  get: SafeService.getSafe,
-  create: SafeService.addSafe,
-  update: SafeService.updateSafe,
-  delete: SafeService.deleteSafe
+export const Vault = {
+  list: VaultService.getVaults,
+  get: VaultService.getVault,
+  create: VaultService.addVault,
+  update: VaultService.updateVault,
+  delete: VaultService.deleteVault,
+  getByBank: VaultService.getVaultsByBank
 };
 
 /**
- * Entidade de Conta a Pagar
+ * Entidade de Despesa
  */
-export const Payable = {
-  list: PayableService.getPayables,
-  get: PayableService.getPayable,
-  create: PayableService.addPayable,
-  update: PayableService.updatePayable,
-  delete: PayableService.deletePayable,
-  getParcels: PayableService.getPayableParcels
+export const Expense = {
+  list: ExpenseService.getExpenses,
+  create: ExpenseService.addExpense,
+  update: ExpenseService.updateExpense,
+  delete: ExpenseService.deleteExpense
 };
 
 /**
- * Entidade de Conta a Receber
+ * Entidade de Renda Extra
  */
-export const Receivable = {
-  list: ReceivableService.getReceivables,
-  get: ReceivableService.getReceivable,
-  create: ReceivableService.addReceivable,
-  update: ReceivableService.updateReceivable,
-  delete: ReceivableService.deleteReceivable,
-  getInstallments: ReceivableService.getReceivableInstallments
-};
-
-/**
- * Entidade de Transação
- */
-export const Transaction = {
-  list: TransactionService.getTransactions,
-  get: TransactionService.getTransaction,
-  create: TransactionService.addTransaction,
-  update: TransactionService.updateTransaction,
-  delete: TransactionService.deleteTransaction
+export const ExtraIncome = {
+  list: ExtraIncomeService.getExtraIncomes,
+  create: ExtraIncomeService.addExtraIncome
 }; 

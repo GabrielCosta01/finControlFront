@@ -52,8 +52,7 @@ const LoginPage = () => {
       setIsLoading(true);
       const response = await login(data);
       
-      // Salvar o token no localStorage e no Redux
-      localStorage.setItem('authToken', response.token);
+      // Apenas despachar a ação do Redux - o token será salvo automaticamente no localStorage
       dispatch(setToken(response.token));
       
       toast.success('Login realizado com sucesso!');

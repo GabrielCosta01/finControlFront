@@ -31,12 +31,26 @@ export const ROUTES = {
   BANKS: {
     BASE: `${BASE_PATH}/banks`,
     DETAIL: (id) => `${BASE_PATH}/banks/${id}`,
+    CLEAR_INCOMES: (id) => `${BASE_PATH}/banks/${id}/clear-incomes`,
+    CLEAR_EXPENSES: (id) => `${BASE_PATH}/banks/${id}/clear-expenses`,
   },
   
-  // Cofres
-  SAFES: {
-    BASE: `${BASE_PATH}/safes`,
-    DETAIL: (id) => `${BASE_PATH}/safes/${id}`,
+  // Cofres (Vaults)
+  VAULTS: {
+    BASE: `${BASE_PATH}/vaults`,
+    DETAIL: (id) => `${BASE_PATH}/vaults/${id}`,
+    BY_BANK: (bankId) => `${BASE_PATH}/vaults/bank/${bankId}`,
+  },
+  
+  // Despesas
+  EXPENSES: {
+    BASE: `${BASE_PATH}/expenses`,
+    DETAIL: (id) => `${BASE_PATH}/expenses/${id}`,
+  },
+
+  // Renda Extra
+  EXTRA_INCOME: {
+    BASE: `${BASE_PATH}/extra-income`,
   },
   
   // Contas a Pagar
