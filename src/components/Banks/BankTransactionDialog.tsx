@@ -46,7 +46,7 @@ export default function BankTransactionDialog({
 }: BankTransactionDialogProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>("_none");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,20 +57,31 @@ export default function BankTransactionDialog({
     try {
       // Create transaction record based on type
       if (type === "WITHDRAWAL") {
-        await Expense.create({
+        const expenseData: any = {
           name: description.trim(),
           value: parseFloat(amount),
-          categoryId: categoryId || categories[0].id,
           bankId: bank.id,
           expenseDate: new Date().toISOString().slice(0, 10)
-        });
+        };
+
+        if (categoryId !== "_none") {
+          expenseData.categoryId = categoryId;
+        }
+
+        await Expense.create(expenseData);
       } else {
-        await ExtraIncome.create({
+        const incomeData: any = {
           description: description.trim(),
           amount: parseFloat(amount),
-          categoryId: categoryId || categories[0].id,
+          bankId: bank.id,
           date: new Date().toISOString().slice(0, 10)
-        });
+        };
+
+        if (categoryId !== "_none") {
+          incomeData.categoryId = categoryId;
+        }
+
+        await ExtraIncome.create(incomeData);
       }
 
       // Update bank balance
@@ -160,7 +171,7 @@ export default function BankTransactionDialog({
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-200 rounded-md shadow-lg">
-                  <SelectItem value="" className="text-gray-500 hover:bg-gray-50 transition-colors duration-200">
+                  <SelectItem value="_none" className="text-gray-500 hover:bg-gray-50 transition-colors duration-200">
                     Sem categoria
                   </SelectItem>
                   {categories.map(category => (

@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Safe, Bank, Category, Transaction } from '@/api/entities/all';
+import { Vault as Safe, Bank, Category } from '@/api/entities/all';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface SafeData {
   id: string;
@@ -24,16 +26,6 @@ interface CategoryData {
   type: 'EXPENSE' | 'INCOME';
 }
 
-interface TransactionData {
-  id: string;
-  description: string;
-  amount: number;
-  transaction_date: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL';
-  category_id?: string;
-  safe_id?: string;
-}
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,18 +42,18 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Plus, PiggyBank, ArrowUpCircle, ArrowDownCircle, History, RefreshCw } from "lucide-react";
+import { Plus, PiggyBank, ArrowUpCircle, ArrowDownCircle, RefreshCw } from "lucide-react";
 import SafeTransactionDialog from '@/components/Safes/SafeTransactionDialog';
-import TransactionHistory from '@/components/Transactions/TransactionHistory';
+import { Label } from "@/components/ui/label";
 
 export default function Safes() {
   const [safes, setSafes] = useState<SafeData[]>([]);
   const [banks, setBanks] = useState<BankData[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
-  const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [newSafe, setNewSafe] = useState({
     name: "",
-    balance: "",
+    description: "",
+    balance: "0,00",
     currency: "BRL",
     bank_id: "none"
   });
@@ -74,37 +66,102 @@ export default function Safes() {
   }, []);
 
   const loadData = async () => {
-    const [safesData, banksData, categoriesData, transactionsData] = await Promise.all([
-      Safe.list(),
-      Bank.list(),
-      Category.list(),
-      Transaction.list('-transaction_date')
-    ]);
+    try {
+      const [safesData, banksData, categoriesData] = await Promise.all([
+        Safe.list(),
+        Bank.list(),
+        Category.list()
+      ]);
+      
+      // Converte os valores de centavos para decimal
+      const formattedSafes = safesData.map(safe => ({
+        ...safe,
+        balance: typeof safe.balance === 'number' ? safe.balance / 100 : 0
+      }));
+      
+      setSafes(formattedSafes);
+      setBanks(banksData);
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    }
+  };
+
+  const formatInputValue = (value: string): string => {
+    // Remove tudo exceto números e vírgula
+    const cleaned = value.replace(/[^\d,]/g, '');
+    // Substitui vírgula por ponto para manipulação
+    const withDot = cleaned.replace(',', '.');
+    // Converte para número e formata com 2 casas decimais
+    const number = parseFloat(withDot || '0');
+    if (isNaN(number)) return "0,00";
+    // Retorna o valor formatado com vírgula
+    return number.toFixed(2).replace('.', ',');
+  };
+
+  const handleBalanceChange = (value: string) => {
+    // Remove caracteres não numéricos exceto vírgula
+    const cleaned = value.replace(/[^\d,]/g, '');
     
-    setSafes(safesData);
-    setBanks(banksData);
-    setCategories(categoriesData);
-    setTransactions(transactionsData.filter((t: TransactionData) => t.safe_id));
+    // Se estiver vazio, não atualiza
+    if (!cleaned) return;
+
+    // Encontra a posição da vírgula
+    const commaIndex = cleaned.indexOf(',');
+    
+    // Se não tem vírgula ou é a última posição, usa o valor limpo
+    if (commaIndex === -1 || commaIndex === cleaned.length - 1) {
+      setNewSafe(prev => ({ ...prev, balance: cleaned }));
+      return;
+    }
+
+    // Separa a parte inteira e decimal
+    const integerPart = cleaned.slice(0, commaIndex);
+    const decimalPart = cleaned.slice(commaIndex + 1);
+
+    // Limita a parte decimal a 2 dígitos
+    const formattedValue = `${integerPart},${decimalPart.slice(0, 2)}`;
+    setNewSafe(prev => ({ ...prev, balance: formattedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSafe.name.trim() || !newSafe.balance) return;
+    if (!newSafe.name.trim() || !newSafe.balance || !newSafe.description.trim()) return;
 
-    await Safe.create({
-      name: newSafe.name.trim(),
-      balance: parseFloat(newSafe.balance),
-      currency: newSafe.currency,
-      bank_id: newSafe.bank_id === "none" ? undefined : newSafe.bank_id
-    });
+    try {
+      // Converte o valor para número (troca vírgula por ponto)
+      const valueAsNumber = parseFloat(newSafe.balance.replace(',', '.'));
+      if (isNaN(valueAsNumber)) {
+        console.error("Valor inválido para saldo inicial");
+        return;
+      }
 
-    setNewSafe({
-      name: "",
-      balance: "",
-      currency: "BRL",
-      bank_id: "none"
-    });
-    loadData();
+      // Converte para centavos
+      const amountInCents = Math.round(valueAsNumber * 100);
+
+      const data = {
+        name: newSafe.name.trim(),
+        description: newSafe.description.trim(),
+        initialAmount: amountInCents,
+        currency: newSafe.currency,
+      };
+
+      if (newSafe.bank_id !== "none") {
+        Object.assign(data, { bankId: newSafe.bank_id });
+      }
+
+      await Safe.create(data);
+      setNewSafe({
+        name: "",
+        description: "",
+        balance: "0,00",
+        currency: "BRL",
+        bank_id: "none"
+      });
+      loadData();
+    } catch (error) {
+      console.error("Erro ao criar cofre:", error);
+    }
   };
 
   const openTransactionDialog = (safe: SafeData, type: 'DEPOSIT' | 'WITHDRAWAL') => {
@@ -113,17 +170,28 @@ export default function Safes() {
     setTransactionDialogOpen(true);
   };
 
+  const formatCurrency = (value: number, currency: string) => {
+    try {
+      return new Intl.NumberFormat(currency === 'BRL' ? 'pt-BR' : 'en-US', {
+        style: 'currency',
+        currency: currency
+      }).format(value);
+    } catch (error) {
+      return currency === 'BRL' ? 'R$ 0,00' : '$ 0.00';
+    }
+  };
+
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full bg-gray-50">
       <div className="container mx-auto px-4 py-6 max-w-[1400px]">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Cofres</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Cofres</h1>
           <div className="flex items-center gap-2">
             <Button
               onClick={loadData}
               variant="outline"
               size="sm"
-              className="text-gray-600 hover:text-gray-900"
+              className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Atualizar
@@ -135,60 +203,116 @@ export default function Safes() {
           {/* Formulário de Novo Cofre */}
           <div className="lg:col-span-4">
             <Card className="bg-white shadow-lg border-0">
-              <CardHeader className="border-b bg-gray-50/50">
-                <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-purple-500" />
+              <CardHeader className="border-b bg-purple-50/80">
+                <CardTitle className="text-xl font-semibold flex items-center gap-2 text-purple-900">
+                  <Plus className="w-5 h-5 text-purple-600" />
                   Novo Cofre
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-4">
-                    <Input
-                      value={newSafe.name}
-                      onChange={(e) => setNewSafe({ ...newSafe, name: e.target.value })}
-                      placeholder="Nome do cofre"
-                      className="w-full border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                    />
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={newSafe.balance}
-                      onChange={(e) => setNewSafe({ ...newSafe, balance: e.target.value })}
-                      placeholder="Saldo inicial"
-                      className="w-full border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                    />
-                    <Select
-                      value={newSafe.currency}
-                      onValueChange={(value) => setNewSafe({ ...newSafe, currency: value })}
-                    >
-                      <SelectTrigger className="w-full border-gray-200 focus:border-purple-500 focus:ring-purple-500">
-                        <SelectValue placeholder="Moeda" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BRL">Real (BRL)</SelectItem>
-                        <SelectItem value="USD">Dólar (USD)</SelectItem>
-                        <SelectItem value="EUR">Euro (EUR)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={newSafe.bank_id}
-                      onValueChange={(value) => setNewSafe({ ...newSafe, bank_id: value })}
-                    >
-                      <SelectTrigger className="w-full border-gray-200 focus:border-purple-500 focus:ring-purple-500">
-                        <SelectValue placeholder="Vincular a um banco (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum banco</SelectItem>
-                        {banks.map((bank) => (
-                          <SelectItem key={bank.id} value={bank.id}>
-                            {bank.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-5">
+                    <div>
+                      <Label htmlFor="name" className="text-base font-semibold text-gray-900 mb-1.5 block">
+                        Nome do cofre <span className="text-purple-600">*</span>
+                      </Label>
+                      <Input
+                        id="name"
+                        value={newSafe.name}
+                        onChange={(e) => setNewSafe({ ...newSafe, name: e.target.value })}
+                        placeholder="Ex: Viagem de férias"
+                        className="w-full bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500 placeholder:text-gray-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description" className="text-base font-semibold text-gray-900 mb-1.5 block">
+                        Descrição <span className="text-purple-600">*</span>
+                      </Label>
+                      <Input
+                        id="description"
+                        value={newSafe.description}
+                        onChange={(e) => setNewSafe({ ...newSafe, description: e.target.value })}
+                        placeholder="Ex: Economias para viagem de férias"
+                        className="w-full bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500 placeholder:text-gray-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="balance" className="text-base font-semibold text-gray-900 mb-1.5 block">
+                        Saldo inicial <span className="text-purple-600">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="balance"
+                          type="text"
+                          inputMode="decimal"
+                          value={newSafe.balance}
+                          onChange={(e) => handleBalanceChange(e.target.value)}
+                          onBlur={(e) => {
+                            const formatted = formatInputValue(e.target.value);
+                            setNewSafe(prev => ({ ...prev, balance: formatted }));
+                          }}
+                          placeholder="0,00"
+                          className="w-full pl-8 bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500 placeholder:text-gray-500"
+                          required
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-medium">
+                          R$
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="currency" className="text-base font-semibold text-gray-900 mb-1.5 block">
+                        Moeda <span className="text-purple-600">*</span>
+                      </Label>
+                      <Select
+                        value={newSafe.currency}
+                        onValueChange={(value) => setNewSafe({ ...newSafe, currency: value })}
+                        required
+                      >
+                        <SelectTrigger 
+                          id="currency" 
+                          className="w-full bg-white border-gray-300 text-gray-900 focus:border-purple-500 focus:ring-purple-500"
+                        >
+                          <SelectValue placeholder="Selecione a moeda" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BRL">Real (BRL)</SelectItem>
+                          <SelectItem value="USD">Dólar (USD)</SelectItem>
+                          <SelectItem value="EUR">Euro (EUR)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="bank" className="text-base font-semibold text-gray-900 mb-1.5 block">
+                        Banco vinculado <span className="text-gray-500 font-normal">(opcional)</span>
+                      </Label>
+                      <Select
+                        value={newSafe.bank_id}
+                        onValueChange={(value) => setNewSafe({ ...newSafe, bank_id: value })}
+                      >
+                        <SelectTrigger 
+                          id="bank" 
+                          className="w-full bg-white border-gray-300 text-gray-900 focus:border-purple-500 focus:ring-purple-500"
+                        >
+                          <SelectValue placeholder="Vincular a um banco" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum banco</SelectItem>
+                          {banks.map((bank) => (
+                            <SelectItem key={bank.id} value={bank.id}>
+                              {bank.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <Button type="submit" className="w-full bg-purple-500 hover:bg-purple-600 border-0">
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium border-0 shadow-sm hover:shadow transition-all"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Adicionar Cofre
                   </Button>
@@ -202,41 +326,45 @@ export default function Safes() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {safes.map((safe) => (
                 <Card key={safe.id} className="bg-white shadow-lg border-0">
-                  <CardHeader className="border-b bg-gray-50/50 pb-4">
+                  <CardHeader className="border-b bg-purple-50 pb-4">
                     <CardTitle className="text-lg font-medium flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <PiggyBank className="w-5 h-5 text-purple-500" />
-                        {safe.name}
+                        <PiggyBank className="w-5 h-5 text-purple-600" />
+                        <span className="text-purple-900">{safe.name}</span>
                       </div>
-                      <span className="text-sm font-normal text-gray-500">
+                      <span className="text-sm font-normal text-purple-700">
                         {safe.currency}
                       </span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {new Intl.NumberFormat(safe.currency === 'BRL' ? 'pt-BR' : 'en-US', {
-                        style: 'currency',
-                        currency: safe.currency
-                      }).format(safe.balance)}
+                    <div className="text-2xl font-bold text-gray-800">
+                      {formatCurrency(safe.balance, safe.currency)}
                     </div>
                     {safe.bank_id && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        Vinculado a: {banks.find(b => b.id === safe.bank_id)?.name}
+                      <p className="text-sm text-gray-700 mt-2">
+                        Vinculado a: <span className="font-medium">{banks.find(b => b.id === safe.bank_id)?.name}</span>
                       </p>
                     )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Atualizado em {new Intl.DateTimeFormat('pt-BR', {
-                        dateStyle: 'long',
-                        timeStyle: 'short'
-                      }).format(new Date(safe.updated_date || safe.created_date))}
+                    <p className="text-xs text-gray-600 mt-1">
+                      Atualizado em {(() => {
+                        try {
+                          const date = new Date(safe.updated_date || safe.created_date);
+                          if (isNaN(date.getTime())) {
+                            return 'Data não disponível';
+                          }
+                          return format(date, "dd 'de' MMMM 'às' HH:mm", { locale: ptBR });
+                        } catch (error) {
+                          return 'Data não disponível';
+                        }
+                      })()}
                     </p>
                   </CardContent>
                   <CardFooter className="flex justify-between gap-2 pt-0 border-t">
                     <Button 
                       onClick={() => openTransactionDialog(safe, "DEPOSIT")}
                       variant="ghost"
-                      className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      className="flex-1 text-green-700 hover:text-green-800 hover:bg-green-50 font-medium"
                     >
                       <ArrowUpCircle className="w-4 h-4 mr-2" />
                       Depositar
@@ -244,7 +372,7 @@ export default function Safes() {
                     <Button 
                       onClick={() => openTransactionDialog(safe, "WITHDRAWAL")}
                       variant="ghost"
-                      className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="flex-1 text-red-700 hover:text-red-800 hover:bg-red-50 font-medium"
                     >
                       <ArrowDownCircle className="w-4 h-4 mr-2" />
                       Sacar
@@ -256,9 +384,9 @@ export default function Safes() {
               {safes.length === 0 && (
                 <Card className="md:col-span-2 bg-white shadow-lg border-0">
                   <CardContent className="text-center py-8">
-                    <PiggyBank className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">Nenhum cofre cadastrado</p>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <PiggyBank className="w-12 h-12 mx-auto mb-4 text-purple-300" />
+                    <p className="text-gray-700 font-medium">Nenhum cofre cadastrado</p>
+                    <p className="text-sm text-gray-600 mt-1">
                       Adicione um cofre usando o formulário ao lado
                     </p>
                   </CardContent>
@@ -274,7 +402,9 @@ export default function Safes() {
           open={transactionDialogOpen}
           safe={currentSafe}
           type={transactionType}
-          categories={categories}
+          categories={categories.filter(cat => 
+            transactionType === "DEPOSIT" ? cat.type === "INCOME" : cat.type === "EXPENSE"
+          )}
           onClose={() => {
             setTransactionDialogOpen(false);
             setCurrentSafe(null);

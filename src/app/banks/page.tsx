@@ -49,8 +49,9 @@ import {
   CardFooter,
   CardDescription,
 } from "@/components/ui/card";
-import { Plus, Building2, ArrowUpCircle, ArrowDownCircle, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Building2, ArrowUpCircle, ArrowDownCircle, RefreshCw, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import BankTransactionDialog from '@/components/Banks/BankTransactionDialog';
+import { toast } from 'react-toastify';
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return "Data não disponível";
@@ -121,6 +122,21 @@ export default function Banks() {
     setCurrentBank(bank);
     setTransactionType(type);
     setTransactionDialogOpen(true);
+  };
+
+  const handleDelete = async (bank: BankData) => {
+    if (!confirm(`Tem certeza que deseja excluir o banco "${bank.name}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      await Bank.delete(bank.id);
+      toast.success("Banco excluído com sucesso!");
+      loadData();
+    } catch (error) {
+      console.error("Erro ao excluir banco:", error);
+      toast.error("Não foi possível excluir o banco. Tente novamente mais tarde.");
+    }
   };
 
   return (
@@ -248,30 +264,47 @@ export default function Banks() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-4">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                        .format(bank.currentBalance)}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Saldo Atual</span>
+                        <span className="text-lg font-semibold text-gray-900">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bank.currentBalance)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>Última atualização</span>
+                        <span>{formatDate(bank.updatedAt)}</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Atualizado em {formatDate(bank.updatedAt || bank.createdAt)}
-                    </p>
                   </CardContent>
-                  <CardFooter className="flex justify-between gap-2 pt-0 border-t border-gray-100">
-                    <Button 
-                      onClick={() => openTransactionDialog(bank, "DEPOSIT")}
+                  <CardFooter className="border-t border-gray-100 bg-gray-50/50 flex justify-between gap-2 p-4">
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => openTransactionDialog(bank, 'DEPOSIT')}
+                        variant="outline"
+                        size="sm"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                      >
+                        <ArrowUpCircle className="w-4 h-4 mr-1" />
+                        Entrada
+                      </Button>
+                      <Button
+                        onClick={() => openTransactionDialog(bank, 'WITHDRAWAL')}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      >
+                        <ArrowDownCircle className="w-4 h-4 mr-1" />
+                        Saída
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => handleDelete(bank)}
                       variant="ghost"
-                      className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50/80 transition-colors duration-200"
+                      size="sm"
+                      className="text-gray-400 hover:text-red-600 hover:bg-red-50"
                     >
-                      <ArrowUpCircle className="w-4 h-4 mr-2" />
-                      Depositar
-                    </Button>
-                    <Button 
-                      onClick={() => openTransactionDialog(bank, "WITHDRAWAL")}
-                      variant="ghost"
-                      className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50/80 transition-colors duration-200"
-                    >
-                      <ArrowDownCircle className="w-4 h-4 mr-2" />
-                      Sacar
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </CardFooter>
                 </Card>

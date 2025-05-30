@@ -4,6 +4,8 @@ import * as BankService from './services/BankService';
 import * as VaultService from './services/VaultService';
 import * as ExpenseService from './services/ExpenseService';
 import * as ExtraIncomeService from './services/ExtraIncomeService';
+import * as PayableService from './services/PayableService';
+import * as ReceivableService from './services/ReceivableService';
 
 /**
  * Entidade de Usuário
@@ -66,4 +68,26 @@ export const Expense = {
 export const ExtraIncome = {
   list: ExtraIncomeService.getExtraIncomes,
   create: ExtraIncomeService.addExtraIncome
+};
+
+/**
+ * Entidade de Contas a Pagar
+ */
+export const Payable = {
+  list: PayableService.getPayables,
+  get: PayableService.getPayable,
+  create: PayableService.addPayable,
+  update: PayableService.updatePayable,
+  delete: PayableService.deletePayable
+};
+
+/**
+ * Entidade de Contas a Receber
+ */
+export const Receivable = {
+  list: ReceivableService.getReceivables,
+  get: ReceivableService.getReceivable,
+  create: ReceivableService.addReceivable,
+  update: ReceivableService.updateReceivable,
+  delete: ReceivableService.deleteReceivable
 }; 

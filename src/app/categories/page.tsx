@@ -16,6 +16,7 @@ import { toast } from 'react-toastify';
 interface CategoryType {
   id: string;
   userId: string;
+  name: string;
   description: string;
   createdAt: string;
   updatedAt: string;
@@ -24,10 +25,12 @@ interface CategoryType {
 export default function Categories() {
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [newCategory, setNewCategory] = useState({
-    description: '',
+    name: '',
+    description: ''
   });
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
   useEffect(() => {
@@ -49,16 +52,20 @@ export default function Categories() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCategory.description.trim()) {
-      toast.warning("Por favor, insira uma descrição para a categoria");
+    if (!newCategory.name.trim()) {
+      toast.warning("Por favor, insira um nome para a categoria");
       return;
     }
 
     try {
       setLoading(true);
-      await Category.create(newCategory);
+      await Category.create({
+        name: newCategory.name.trim(),
+        description: newCategory.description.trim() || newCategory.name.trim()
+      });
       setNewCategory({
-        description: '',
+        name: '',
+        description: ''
       });
       toast.success("Categoria criada com sucesso!");
       await fetchCategories();
@@ -88,22 +95,27 @@ export default function Categories() {
 
   const startEditing = (category: CategoryType) => {
     setEditingId(category.id);
-    setEditDescription(category.description);
+    setEditName(category.name);
+    setEditDescription(category.description || category.name);
   };
 
   const cancelEditing = () => {
     setEditingId(null);
+    setEditName('');
     setEditDescription('');
   };
 
   const saveEditing = async () => {
-    if (!editingId || !editDescription.trim()) {
+    if (!editingId || !editName.trim()) {
       return;
     }
 
     try {
       setLoading(true);
-      await Category.update(editingId, { description: editDescription });
+      await Category.update(editingId, { 
+        name: editName.trim(),
+        description: editDescription.trim() || editName.trim()
+      });
       toast.success("Categoria atualizada com sucesso!");
       setEditingId(null);
       await fetchCategories();
@@ -145,14 +157,33 @@ export default function Categories() {
               </CardHeader>
               <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Input
-                      value={newCategory.description}
-                      onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                      placeholder="Nome da categoria"
-                      disabled={loading}
-                      className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                        Nome da Categoria <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="name"
+                        value={newCategory.name}
+                        onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                        placeholder="Ex: Alimentação"
+                        disabled={loading}
+                        className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                        Descrição <span className="text-gray-400">(opcional)</span>
+                      </label>
+                      <Input
+                        id="description"
+                        value={newCategory.description}
+                        onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                        placeholder="Ex: Gastos com supermercado e restaurantes"
+                        disabled={loading}
+                        className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                   <Button 
                     type="submit" 
@@ -207,12 +238,21 @@ export default function Categories() {
                         >
                           {editingId === category.id ? (
                             <div className="flex-1 flex items-center gap-2">
-                              <Input
-                                value={editDescription}
-                                onChange={(e) => setEditDescription(e.target.value)}
-                                className="flex-1 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                                autoFocus
-                              />
+                              <div className="flex-1 space-y-2">
+                                <Input
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                  placeholder="Nome da categoria"
+                                  autoFocus
+                                />
+                                <Input
+                                  value={editDescription}
+                                  onChange={(e) => setEditDescription(e.target.value)}
+                                  className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                  placeholder="Descrição (opcional)"
+                                />
+                              </div>
                               <Button
                                 onClick={saveEditing}
                                 variant="ghost"
@@ -233,8 +273,11 @@ export default function Categories() {
                             </div>
                           ) : (
                             <>
-                              <div className="flex items-center gap-3">
-                                <span className="font-medium text-gray-900">{category.description}</span>
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium text-gray-900">{category.name}</span>
+                                {category.description && category.description !== category.name && (
+                                  <span className="text-sm text-gray-500">{category.description}</span>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button

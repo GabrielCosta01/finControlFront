@@ -4,7 +4,9 @@ import {
   Bank, 
   Vault, 
   Expense, 
-  ExtraIncome 
+  ExtraIncome,
+  Payable,
+  Receivable
 } from '../entities';
 
 export { 
@@ -13,5 +15,7 @@ export {
   Bank, 
   Vault, 
   Expense, 
-  ExtraIncome 
+  ExtraIncome,
+  Payable,
+  Receivable
 }; 
