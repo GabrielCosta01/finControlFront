@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Bank, Safe, Payable, Receivable, Transaction, Category } from '@/api/entities/all';
+import { Bank, Vault, Payable, Receivable, Transaction, Category } from '@/api/entities/all';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,7 +40,7 @@ interface BankData {
   balance: number;
 }
 
-interface SafeData {
+interface VaultData {
   id: string;
   name: string;
   balance: number;
@@ -82,7 +82,7 @@ interface CategoryData {
 
 export default function FinancialReport() {
   const [banks, setBanks] = useState<BankData[]>([]);
-  const [safes, setSafes] = useState<SafeData[]>([]);
+  const [vaults, setVaults] = useState<VaultData[]>([]);
   const [payables, setPayables] = useState<PayableData[]>([]);
   const [receivables, setReceivables] = useState<ReceivableData[]>([]);
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
@@ -99,17 +99,17 @@ export default function FinancialReport() {
   }, []);
 
   const loadData = async () => {
-    const [banksData, safesData, payablesData, receivablesData, transactionsData, categoriesData] = await Promise.all([
+    const [banksData, vaultsData, payablesData, receivablesData, transactionsData, categoriesData] = await Promise.all([
       Bank.list(),
-      Safe.list(),
+      Vault.list(),
       Payable.list(),
       Receivable.list(),
-      Transaction.list('-transaction_date'),
+      Transaction.list(),
       Category.list()
     ]);
     
     setBanks(banksData);
-    setSafes(safesData);
+    setVaults(vaultsData);
     setPayables(payablesData);
     setReceivables(receivablesData);
     setTransactions(transactionsData);
@@ -117,11 +117,11 @@ export default function FinancialReport() {
   };
 
   const totalBankBalance = banks.reduce((total, bank) => total + bank.balance, 0);
-  const totalSafeBalance = safes.reduce((total, safe) => {
-    if (safe.currency === 'BRL') return total + safe.balance;
+  const totalVaultBalance = vaults.reduce((total, vault) => {
+    if (vault.currency === 'BRL') return total + vault.balance;
     return total;
   }, 0);
-  const totalBalance = totalBankBalance + totalSafeBalance;
+  const totalBalance = totalBankBalance + totalVaultBalance;
 
   const filteredPayables = payables.filter(p => {
     const date = new Date(p.due_date);
