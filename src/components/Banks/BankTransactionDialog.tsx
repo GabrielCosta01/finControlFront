@@ -14,10 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Transaction, Bank } from "@/api/entities/all";
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2 } from "lucide-react";
+import { Bank, Expense, ExtraIncome } from "@/api/entities/all";
+import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Building2 } from "lucide-react";
 
 interface BankTransactionDialogProps {
   open: boolean;
@@ -25,7 +26,7 @@ interface BankTransactionDialogProps {
   bank: {
     id: string;
     name: string;
-    balance: number;
+    currentBalance: number;
   };
   type: "DEPOSIT" | "WITHDRAWAL";
   categories: Array<{
@@ -45,7 +46,7 @@ export default function BankTransactionDialog({
 }: BankTransactionDialogProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>("_none");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,20 +55,39 @@ export default function BankTransactionDialog({
 
     setLoading(true);
     try {
-      // Create transaction record
-      await Transaction.create({
-        description: description.trim(),
-        amount: parseFloat(amount),
-        transaction_date: new Date().toISOString().split('T')[0],
-        transaction_type: type,
-        bank_id: bank.id,
-        category_id: categoryId || undefined
-      });
+      // Create transaction record based on type
+      if (type === "WITHDRAWAL") {
+        const expenseData: any = {
+          name: description.trim(),
+          value: parseFloat(amount),
+          bankId: bank.id,
+          expenseDate: new Date().toISOString().slice(0, 10)
+        };
+
+        if (categoryId !== "_none") {
+          expenseData.categoryId = categoryId;
+        }
+
+        await Expense.create(expenseData);
+      } else {
+        const incomeData: any = {
+          description: description.trim(),
+          amount: parseFloat(amount),
+          bankId: bank.id,
+          date: new Date().toISOString().slice(0, 10)
+        };
+
+        if (categoryId !== "_none") {
+          incomeData.categoryId = categoryId;
+        }
+
+        await ExtraIncome.create(incomeData);
+      }
 
       // Update bank balance
       const newBalance = type === "DEPOSIT" 
-        ? bank.balance + parseFloat(amount)
-        : bank.balance - parseFloat(amount);
+        ? bank.currentBalance + parseFloat(amount)
+        : bank.currentBalance - parseFloat(amount);
       
       await Bank.update(bank.id, {
         balance: newBalance
@@ -89,69 +109,102 @@ export default function BankTransactionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <DialogIcon className={`h-5 w-5 ${dialogColor}`} />
-            {dialogTitle} no {bank?.name}
+      <DialogContent className="sm:max-w-[425px] bg-white rounded-lg shadow-lg border border-gray-200/80">
+        <DialogHeader className="space-y-3 border-b border-gray-100 pb-4 bg-gradient-to-br from-white to-gray-50/80">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <DialogIcon className={`h-5 w-5 ${dialogColor} transition-transform duration-200 hover:scale-110`} />
+            {dialogTitle}
           </DialogTitle>
+          <DialogDescription className="flex items-center gap-2 text-gray-600">
+            <Building2 className="h-4 w-4" />
+            {bank?.name}
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Input
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Descrição da transação"
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6 pt-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                Descrição
+              </Label>
+              <Input
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={`Descreva ${type === "DEPOSIT" ? "o depósito" : "o saque"}`}
+                className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200 rounded-md"
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">Valor</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0,00"
-              required
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount" className="text-sm font-medium text-gray-700">
+                Valor
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                  R$
+                </span>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0,00"
+                  className="pl-8 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200 rounded-md"
+                  required
+                />
+              </div>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="category">Categoria (opcional)</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Sem categoria</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.description}
+            <div className="space-y-2">
+              <Label htmlFor="category" className="text-sm font-medium text-gray-700">
+                Categoria
+              </Label>
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger 
+                  id="category" 
+                  className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200 rounded-md bg-white"
+                >
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-gray-200 rounded-md shadow-lg">
+                  <SelectItem value="_none" className="text-gray-500 hover:bg-gray-50 transition-colors duration-200">
+                    Sem categoria
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  {categories.map(category => (
+                    <SelectItem 
+                      key={category.id} 
+                      value={category.id}
+                      className="hover:bg-gray-50 transition-colors duration-200"
+                    >
+                      {category.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="gap-2 border-t border-gray-100 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
+              className="flex-1 border-gray-200 hover:border-gray-300 transition-colors duration-200"
             >
               Cancelar
             </Button>
             <Button 
               type="submit" 
-              className={type === "DEPOSIT" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+              className={`flex-1 ${
+                type === "DEPOSIT" 
+                  ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700" 
+                  : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+              } text-white transition-all duration-200 shadow-sm hover:shadow rounded-md`}
               disabled={loading}
             >
               {loading ? (

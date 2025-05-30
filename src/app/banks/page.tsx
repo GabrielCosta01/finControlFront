@@ -1,13 +1,16 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Bank, Category, Transaction } from '@/api/entities/all';
+import { Bank, Category, Expense, ExtraIncome } from '@/api/entities/all';
 
 interface BankData {
   id: string;
   name: string;
-  balance: number;
-  created_date: string;
-  updated_date?: string;
+  description: string;
+  totalIncome: number;
+  totalExpense: number;
+  currentBalance: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface CategoryData {
@@ -16,12 +19,22 @@ interface CategoryData {
   type: 'EXPENSE' | 'INCOME';
 }
 
-interface TransactionData {
+interface ExpenseData {
   id: string;
   description: string;
   amount: number;
-  transaction_date: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL';
+  due_date: string;
+  status: 'PENDING' | 'PAID' | 'OVERDUE';
+  category_id?: string;
+  bank_id?: string;
+}
+
+interface ExtraIncomeData {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  status: 'PENDING' | 'RECEIVED';
   category_id?: string;
   bank_id?: string;
 }
@@ -34,15 +47,40 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
+  CardDescription,
 } from "@/components/ui/card";
-import { Plus, Building2, ArrowUpCircle, ArrowDownCircle, History, RefreshCw } from "lucide-react";
+import { Plus, Building2, ArrowUpCircle, ArrowDownCircle, RefreshCw, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import BankTransactionDialog from '@/components/Banks/BankTransactionDialog';
-import TransactionHistory from '@/components/Transactions/TransactionHistory';
+import { toast } from 'react-toastify';
+
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "Data não disponível";
+  
+  try {
+    const date = new Date(dateString);
+    // Verifica se a data é válida
+    if (isNaN(date.getTime())) {
+      return "Data inválida";
+    }
+    
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  } catch (error) {
+    console.error("Erro ao formatar data:", error);
+    return "Data inválida";
+  }
+};
 
 export default function Banks() {
   const [banks, setBanks] = useState<BankData[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
-  const [transactions, setTransactions] = useState<TransactionData[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseData[]>([]);
+  const [extraIncomes, setExtraIncomes] = useState<ExtraIncomeData[]>([]);
   const [newBank, setNewBank] = useState({ name: "", balance: "" });
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
   const [currentBank, setCurrentBank] = useState<BankData | null>(null);
@@ -53,15 +91,18 @@ export default function Banks() {
   }, []);
 
   const loadData = async () => {
-    const [banksData, categoriesData, transactionsData] = await Promise.all([
+    const [banksData, categoriesData, expensesData, extraIncomesData] = await Promise.all([
       Bank.list(),
       Category.list(),
-      Transaction.list('-transaction_date')
+      Expense.list(),
+      ExtraIncome.list()
     ]);
     
+    console.log("Dados dos bancos:", banksData);
     setBanks(banksData);
     setCategories(categoriesData);
-    setTransactions(transactionsData.filter((t: TransactionData) => t.bank_id));
+    setExpenses(expensesData.filter((e: ExpenseData) => e.bank_id));
+    setExtraIncomes(extraIncomesData.filter((i: ExtraIncomeData) => i.bank_id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,7 +111,7 @@ export default function Banks() {
 
     await Bank.create({
       name: newBank.name.trim(),
-      balance: parseFloat(newBank.balance)
+      initialBalance: parseFloat(newBank.balance)
     });
 
     setNewBank({ name: "", balance: "" });
@@ -83,57 +124,111 @@ export default function Banks() {
     setTransactionDialogOpen(true);
   };
 
+  const handleDelete = async (bank: BankData) => {
+    if (!confirm(`Tem certeza que deseja excluir o banco "${bank.name}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      await Bank.delete(bank.id);
+      toast.success("Banco excluído com sucesso!");
+      loadData();
+    } catch (error) {
+      console.error("Erro ao excluir banco:", error);
+      toast.error("Não foi possível excluir o banco. Tente novamente mais tarde.");
+    }
+  };
+
   return (
-    <div className="h-full w-full">
-      <div className="container mx-auto px-4 py-6 max-w-[1400px]">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Bancos</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={loadData}
-              variant="outline"
-              size="sm"
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Atualizar
-            </Button>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100/50">
+      <div className="container mx-auto px-4 py-8 max-w-[1400px]">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Bancos</h1>
+            <p className="mt-1 text-gray-500">Gerencie suas contas bancárias e movimentações financeiras</p>
           </div>
+          <Button
+            onClick={loadData}
+            variant="outline"
+            size="sm"
+            className="text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 transition-colors duration-200 shadow-sm"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Atualizar
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Formulário de Novo Banco */}
-          <div className="lg:col-span-4">
-            <Card className="bg-white shadow-lg border-0">
-              <CardHeader className="border-b bg-gray-50/50">
+          <div className="lg:col-span-4 space-y-6">
+            <Card className="bg-white shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200/80 rounded-lg overflow-hidden">
+              <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-white to-gray-50/80">
                 <CardTitle className="text-xl font-semibold flex items-center gap-2">
                   <Plus className="w-5 h-5 text-blue-500" />
                   Novo Banco
                 </CardTitle>
+                <CardDescription className="text-gray-500">
+                  Adicione uma nova conta bancária ao seu controle financeiro
+                </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-4">
-                    <Input
-                      value={newBank.name}
-                      onChange={(e) => setNewBank({ ...newBank, name: e.target.value })}
-                      placeholder="Nome do banco"
-                      className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={newBank.balance}
-                      onChange={(e) => setNewBank({ ...newBank, balance: e.target.value })}
-                      placeholder="Saldo inicial"
-                      className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    />
+                    <div>
+                      <label htmlFor="bankName" className="block text-sm font-medium text-gray-700 mb-1">
+                        Nome do Banco
+                      </label>
+                      <Input
+                        id="bankName"
+                        value={newBank.name}
+                        onChange={(e) => setNewBank({ ...newBank, name: e.target.value })}
+                        placeholder="Ex: Nubank, Itaú, Bradesco..."
+                        className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="initialBalance" className="block text-sm font-medium text-gray-700 mb-1">
+                        Saldo Inicial
+                      </label>
+                      <Input
+                        id="initialBalance"
+                        type="number"
+                        step="0.01"
+                        value={newBank.balance}
+                        onChange={(e) => setNewBank({ ...newBank, balance: e.target.value })}
+                        placeholder="R$ 0,00"
+                        className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200 rounded-md"
+                      />
+                    </div>
                   </div>
-                  <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 border-0">
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white transition-all duration-200 shadow-sm hover:shadow rounded-md"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Adicionar Banco
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+
+            {/* Card de Estatísticas */}
+            <Card className="bg-white shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200/80 rounded-lg overflow-hidden">
+              <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-white to-gray-50/80">
+                <CardTitle className="text-lg font-semibold">Resumo Geral</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-4 p-6">
+                <div className="space-y-1 bg-blue-50/50 p-4 rounded-lg border border-blue-100/50">
+                  <p className="text-sm text-gray-600">Total em Bancos</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                      .format(banks.reduce((total, bank) => total + bank.currentBalance, 0))}
+                  </p>
+                </div>
+                <div className="space-y-1 bg-gray-50/50 p-4 rounded-lg border border-gray-100/50">
+                  <p className="text-sm text-gray-600">Quantidade</p>
+                  <p className="text-2xl font-bold text-gray-900">{banks.length}</p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -142,53 +237,86 @@ export default function Banks() {
           <div className="lg:col-span-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {banks.map((bank) => (
-                <Card key={bank.id} className="bg-white shadow-lg border-0">
-                  <CardHeader className="border-b bg-gray-50/50 pb-4">
-                    <CardTitle className="text-lg font-medium flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-blue-500" />
-                      {bank.name}
-                    </CardTitle>
+                <Card 
+                  key={bank.id} 
+                  className="group bg-white shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200/80 rounded-lg overflow-hidden"
+                >
+                  <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-white to-gray-50/80 pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg font-medium flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform duration-200" />
+                        {bank.name}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        {bank.totalIncome > 0 && (
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-50 text-green-600 border border-green-100/50 flex items-center gap-1 transition-colors duration-200 hover:bg-green-100/50">
+                            <TrendingUp className="w-3 h-3" />
+                            +{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bank.totalIncome)}
+                          </span>
+                        )}
+                        {bank.totalExpense > 0 && (
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-50 text-red-600 border border-red-100/50 flex items-center gap-1 transition-colors duration-200 hover:bg-red-100/50">
+                            <TrendingDown className="w-3 h-3" />
+                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bank.totalExpense)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="pt-4">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                        .format(bank.balance)}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Saldo Atual</span>
+                        <span className="text-lg font-semibold text-gray-900">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bank.currentBalance)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>Última atualização</span>
+                        <span>{formatDate(bank.updatedAt)}</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Atualizado em {new Intl.DateTimeFormat('pt-BR', {
-                        dateStyle: 'long',
-                        timeStyle: 'short'
-                      }).format(new Date(bank.updated_date || bank.created_date))}
-                    </p>
                   </CardContent>
-                  <CardFooter className="flex justify-between gap-2 pt-0 border-t">
-                    <Button 
-                      onClick={() => openTransactionDialog(bank, "DEPOSIT")}
+                  <CardFooter className="border-t border-gray-100 bg-gray-50/50 flex justify-between gap-2 p-4">
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => openTransactionDialog(bank, 'DEPOSIT')}
+                        variant="outline"
+                        size="sm"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                      >
+                        <ArrowUpCircle className="w-4 h-4 mr-1" />
+                        Entrada
+                      </Button>
+                      <Button
+                        onClick={() => openTransactionDialog(bank, 'WITHDRAWAL')}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      >
+                        <ArrowDownCircle className="w-4 h-4 mr-1" />
+                        Saída
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => handleDelete(bank)}
                       variant="ghost"
-                      className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      size="sm"
+                      className="text-gray-400 hover:text-red-600 hover:bg-red-50"
                     >
-                      <ArrowUpCircle className="w-4 h-4 mr-2" />
-                      Depositar
-                    </Button>
-                    <Button 
-                      onClick={() => openTransactionDialog(bank, "WITHDRAWAL")}
-                      variant="ghost"
-                      className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <ArrowDownCircle className="w-4 h-4 mr-2" />
-                      Sacar
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </CardFooter>
                 </Card>
               ))}
               
               {banks.length === 0 && (
-                <Card className="md:col-span-2 bg-white shadow-lg border-0">
-                  <CardContent className="text-center py-8">
-                    <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">Nenhum banco cadastrado</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Adicione um banco usando o formulário ao lado
+                <Card className="md:col-span-2 bg-white shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200/80 rounded-lg overflow-hidden">
+                  <CardContent className="text-center py-12">
+                    <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">Nenhum banco cadastrado</h3>
+                    <p className="text-sm text-gray-500">
+                      Comece adicionando seu primeiro banco usando o formulário ao lado
                     </p>
                   </CardContent>
                 </Card>

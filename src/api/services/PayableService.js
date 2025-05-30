@@ -2,86 +2,50 @@ import axiosClient from '../axiosClient';
 import { ROUTES } from '../apiRoutes';
 
 /**
- * Obtém a lista de contas a pagar
- * @param {Object} params - Parâmetros para filtros e ordenação
- * @returns {Promise} Promise com o resultado da requisição
+ * Lista todas as contas a pagar do usuário autenticado
+ * @returns {Promise<Array>} Lista de contas a pagar
  */
-export const getPayables = async (params = {}) => {
-  try {
-    const response = await axiosClient.get(ROUTES.PAYABLES.BASE, { params });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+export const getPayables = async () => {
+  const response = await axiosClient.get(ROUTES.PAYABLES.BASE);
+  return response.data;
 };
 
 /**
- * Obtém uma conta a pagar específica pelo ID
- * @param {string} id - ID da conta a pagar
- * @returns {Promise} Promise com o resultado da requisição
+ * Busca uma conta a pagar específica
+ * @param {string} id ID da conta a pagar
+ * @returns {Promise<Object>} Dados da conta a pagar
  */
 export const getPayable = async (id) => {
-  try {
-    const response = await axiosClient.get(ROUTES.PAYABLES.DETAIL(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.get(ROUTES.PAYABLES.DETAIL(id));
+  return response.data;
 };
 
 /**
- * Adiciona uma nova conta a pagar
- * @param {Object} data - Dados da conta a pagar a ser criada
- * @returns {Promise} Promise com o resultado da requisição
+ * Cria uma nova conta a pagar
+ * @param {Object} data Dados da conta a pagar
+ * @returns {Promise<Object>} Dados da conta a pagar criada
  */
 export const addPayable = async (data) => {
-  try {
-    const response = await axiosClient.post(ROUTES.PAYABLES.BASE, data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.post(ROUTES.PAYABLES.BASE, data);
+  return response.data;
 };
 
 /**
  * Atualiza uma conta a pagar existente
- * @param {string} id - ID da conta a pagar
- * @param {Object} data - Dados atualizados da conta a pagar
- * @returns {Promise} Promise com o resultado da requisição
+ * @param {string} id ID da conta a pagar
+ * @param {Object} data Dados atualizados da conta a pagar
+ * @returns {Promise<Object>} Dados da conta a pagar atualizada
  */
 export const updatePayable = async (id, data) => {
-  try {
-    const response = await axiosClient.put(ROUTES.PAYABLES.DETAIL(id), data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.put(ROUTES.PAYABLES.DETAIL(id), data);
+  return response.data;
 };
 
 /**
- * Remove uma conta a pagar
- * @param {string} id - ID da conta a pagar a ser removida
- * @returns {Promise} Promise com o resultado da requisição
+ * Exclui uma conta a pagar
+ * @param {string} id ID da conta a pagar
+ * @returns {Promise<void>}
  */
 export const deletePayable = async (id) => {
-  try {
-    const response = await axiosClient.delete(ROUTES.PAYABLES.DETAIL(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};
-
-/**
- * Obtém as parcelas de uma conta a pagar específica
- * @param {string} id - ID da conta a pagar
- * @returns {Promise} Promise com o resultado da requisição
- */
-export const getPayableParcels = async (id) => {
-  try {
-    const response = await axiosClient.get(ROUTES.PAYABLES.PARCELS(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  await axiosClient.delete(ROUTES.PAYABLES.DETAIL(id));
 }; 

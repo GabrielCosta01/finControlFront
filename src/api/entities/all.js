@@ -2,18 +2,20 @@ import {
   User, 
   Category, 
   Bank, 
-  Safe, 
-  Payable, 
-  Receivable, 
-  Transaction 
+  Vault, 
+  Expense, 
+  ExtraIncome,
+  Payable,
+  Receivable
 } from '../entities';
 
 export { 
   User, 
   Category, 
   Bank, 
-  Safe, 
-  Payable, 
-  Receivable, 
-  Transaction 
+  Vault, 
+  Expense, 
+  ExtraIncome,
+  Payable,
+  Receivable
 }; 

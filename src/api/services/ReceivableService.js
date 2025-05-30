@@ -2,86 +2,50 @@ import axiosClient from '../axiosClient';
 import { ROUTES } from '../apiRoutes';
 
 /**
- * Obtém a lista de contas a receber
- * @param {Object} params - Parâmetros para filtros e ordenação
- * @returns {Promise} Promise com o resultado da requisição
+ * Lista todas as contas a receber do usuário autenticado
+ * @returns {Promise<Array>} Lista de contas a receber
  */
-export const getReceivables = async (params = {}) => {
-  try {
-    const response = await axiosClient.get(ROUTES.RECEIVABLES.BASE, { params });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+export const getReceivables = async () => {
+  const response = await axiosClient.get(ROUTES.RECEIVABLES.BASE);
+  return response.data;
 };
 
 /**
- * Obtém uma conta a receber específica pelo ID
- * @param {string} id - ID da conta a receber
- * @returns {Promise} Promise com o resultado da requisição
+ * Busca uma conta a receber específica
+ * @param {string} id ID da conta a receber
+ * @returns {Promise<Object>} Dados da conta a receber
  */
 export const getReceivable = async (id) => {
-  try {
-    const response = await axiosClient.get(ROUTES.RECEIVABLES.DETAIL(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.get(ROUTES.RECEIVABLES.DETAIL(id));
+  return response.data;
 };
 
 /**
- * Adiciona uma nova conta a receber
- * @param {Object} data - Dados da conta a receber a ser criada
- * @returns {Promise} Promise com o resultado da requisição
+ * Cria uma nova conta a receber
+ * @param {Object} data Dados da conta a receber
+ * @returns {Promise<Object>} Dados da conta a receber criada
  */
 export const addReceivable = async (data) => {
-  try {
-    const response = await axiosClient.post(ROUTES.RECEIVABLES.BASE, data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.post(ROUTES.RECEIVABLES.BASE, data);
+  return response.data;
 };
 
 /**
  * Atualiza uma conta a receber existente
- * @param {string} id - ID da conta a receber
- * @param {Object} data - Dados atualizados da conta a receber
- * @returns {Promise} Promise com o resultado da requisição
+ * @param {string} id ID da conta a receber
+ * @param {Object} data Dados atualizados da conta a receber
+ * @returns {Promise<Object>} Dados da conta a receber atualizada
  */
 export const updateReceivable = async (id, data) => {
-  try {
-    const response = await axiosClient.put(ROUTES.RECEIVABLES.DETAIL(id), data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  const response = await axiosClient.put(ROUTES.RECEIVABLES.DETAIL(id), data);
+  return response.data;
 };
 
 /**
- * Remove uma conta a receber
- * @param {string} id - ID da conta a receber a ser removida
- * @returns {Promise} Promise com o resultado da requisição
+ * Exclui uma conta a receber
+ * @param {string} id ID da conta a receber
+ * @returns {Promise<void>}
  */
 export const deleteReceivable = async (id) => {
-  try {
-    const response = await axiosClient.delete(ROUTES.RECEIVABLES.DETAIL(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};
-
-/**
- * Obtém as parcelas de uma conta a receber específica
- * @param {string} id - ID da conta a receber
- * @returns {Promise} Promise com o resultado da requisição
- */
-export const getReceivableInstallments = async (id) => {
-  try {
-    const response = await axiosClient.get(ROUTES.RECEIVABLES.INSTALLMENTS(id));
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error;
-  }
+  await axiosClient.delete(ROUTES.RECEIVABLES.DETAIL(id));
 }; 
