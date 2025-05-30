@@ -6,7 +6,8 @@ import {
   Expense, 
   ExtraIncome,
   Payable,
-  Receivable
+  Receivable,
+  Transaction
 } from '../entities';
 
 export { 
@@ -17,5 +18,6 @@ export {
   Expense, 
   ExtraIncome,
   Payable,
-  Receivable
+  Receivable,
+  Transaction
 }; 

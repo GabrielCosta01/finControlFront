@@ -6,6 +6,7 @@ import * as ExpenseService from './services/ExpenseService';
 import * as ExtraIncomeService from './services/ExtraIncomeService';
 import * as PayableService from './services/PayableService';
 import * as ReceivableService from './services/ReceivableService';
+import * as TransactionService from './services/TransactionService';
 
 /**
  * Entidade de Usuário
@@ -90,4 +91,15 @@ export const Receivable = {
   create: ReceivableService.addReceivable,
   update: ReceivableService.updateReceivable,
   delete: ReceivableService.deleteReceivable
+};
+
+/**
+ * Entidade de Transações
+ */
+export const Transaction = {
+  list: TransactionService.getTransactions,
+  get: TransactionService.getTransaction,
+  create: TransactionService.addTransaction,
+  update: TransactionService.updateTransaction,
+  delete: TransactionService.deleteTransaction
 }; 
