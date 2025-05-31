@@ -35,20 +35,33 @@ import { ptBR } from 'date-fns/locale';
 interface BankData {
   id: string;
   name: string;
+  description: string;
+  totalIncome: number;
+  totalExpense: number;
+  currentBalance: number | string;
   balance: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface VaultData {
   id: string;
   name: string;
-  balance: number;
+  description: string;
+  amount: number | string;
   currency: string;
+  bankId: string | null;
+  bankName: string | null;
+  userId: string;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ExpenseData {
   id: string;
   description: string;
-  amount: number;
+  amount: number | string;
   due_date: string;
   status: 'PENDING' | 'PAID' | 'OVERDUE';
 }
@@ -56,7 +69,7 @@ interface ExpenseData {
 interface ExtraIncomeData {
   id: string;
   description: string;
-  amount: number;
+  amount: number | string;
   date: string;
   status: 'PENDING' | 'RECEIVED';
 }
@@ -72,33 +85,105 @@ export default function Dashboard() {
   }, []);
 
   const loadData = async () => {
-    const [banksData, vaultsData, expensesData, extraIncomesData] = await Promise.all([
-      Bank.list(),
-      Vault.list(),
-      Expense.list(),
-      ExtraIncome.list()
-    ]);
-    
-    setBanks(banksData);
-    setVaults(vaultsData);
-    setExpenses(expensesData);
-    setExtraIncomes(extraIncomesData);
+    try {
+      const [banksData, vaultsData, expensesData, extraIncomesData] = await Promise.all([
+        Bank.list(),
+        Vault.list(),
+        Expense.list(),
+        ExtraIncome.list()
+      ]);
+      
+      // Processamento dos dados dos bancos usando currentBalance
+      const processedBanks = banksData.map(bank => {
+        const balance = typeof bank.currentBalance === 'string'
+          ? parseFloat(bank.currentBalance.replace(/[^\d.-]/g, ''))
+          : Number(bank.currentBalance);
+
+        return {
+          ...bank,
+          balance: isNaN(balance) ? 0 : balance
+        };
+      });
+
+      // Processamento dos dados dos cofres usando amount
+      const processedVaults = vaultsData.map(vault => {
+        const balance = typeof vault.amount === 'string'
+          ? parseFloat(vault.amount.replace(/[^\d.-]/g, ''))
+          : Number(vault.amount);
+
+        return {
+          ...vault,
+          balance: isNaN(balance) ? 0 : balance
+        };
+      });
+
+      // Processamento dos dados das despesas
+      const processedExpenses = expensesData.map(expense => {
+        const amount = typeof expense.amount === 'string'
+          ? parseFloat(expense.amount.replace(/[^\d.-]/g, ''))
+          : Number(expense.amount);
+
+        return {
+          ...expense,
+          amount: isNaN(amount) ? 0 : amount
+        };
+      });
+
+      // Processamento dos dados das rendas extras
+      const processedExtraIncomes = extraIncomesData.map(income => {
+        const amount = typeof income.amount === 'string'
+          ? parseFloat(income.amount.replace(/[^\d.-]/g, ''))
+          : Number(income.amount);
+
+        return {
+          ...income,
+          amount: isNaN(amount) ? 0 : amount
+        };
+      });
+      
+      // Debug dos valores
+      console.log('Bancos processados:', processedBanks);
+      console.log('Cofres processados:', processedVaults);
+      
+      setBanks(processedBanks);
+      setVaults(processedVaults);
+      setExpenses(processedExpenses);
+      setExtraIncomes(processedExtraIncomes);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setBanks([]);
+      setVaults([]);
+      setExpenses([]);
+      setExtraIncomes([]);
+    }
   };
 
-  const totalBankBalance = banks.reduce((total, bank) => total + bank.balance, 0);
+  const totalBankBalance = banks.reduce((total, bank) => {
+    const balance = typeof bank.currentBalance === 'string'
+      ? parseFloat(bank.currentBalance.replace(/[^\d.-]/g, ''))
+      : Number(bank.currentBalance);
+    return total + (isNaN(balance) ? 0 : balance);
+  }, 0);
+
   const totalVaultBalance = vaults.reduce((total, vault) => {
-    if (vault.currency === 'BRL') return total + vault.balance;
+    if (vault.currency === 'BRL') {
+      const balance = typeof vault.amount === 'string'
+        ? parseFloat(vault.amount.replace(/[^\d.-]/g, ''))
+        : Number(vault.amount);
+      return total + (isNaN(balance) ? 0 : balance);
+    }
     return total;
   }, 0);
+
   const totalBalance = totalBankBalance + totalVaultBalance;
 
   const totalExpenses = expenses
     .filter(p => p.status === 'PENDING')
-    .reduce((total, p) => total + p.amount, 0);
+    .reduce((total, p) => total + (Number(p.amount) || 0), 0);
 
   const totalExtraIncomes = extraIncomes
     .filter(r => r.status === 'PENDING')
-    .reduce((total, r) => total + r.amount, 0);
+    .reduce((total, r) => total + (Number(r.amount) || 0), 0);
 
   const projectedBalance = totalBalance - totalExpenses + totalExtraIncomes;
 
@@ -111,6 +196,17 @@ export default function Dashboard() {
     .filter(r => r.status === 'PENDING')
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
+
+  const formatCurrency = (value: number | string) => {
+    const numericValue = typeof value === 'string'
+      ? parseFloat(value.replace(/[^\d.-]/g, ''))
+      : Number(value);
+
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(isNaN(numericValue) ? 0 : numericValue);
+  };
 
   return (
     <>
@@ -141,10 +237,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <Wallet className="w-5 h-5 text-blue-500" />
               <span className="text-2xl font-bold text-gray-900">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(totalBalance)}
+                {formatCurrency(totalBalance)}
               </span>
             </div>
           </CardContent>
@@ -160,10 +253,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-red-500" />
               <span className="text-2xl font-bold text-red-500">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(totalExpenses)}
+                {formatCurrency(totalExpenses)}
               </span>
             </div>
           </CardContent>
@@ -179,10 +269,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-500" />
               <span className="text-2xl font-bold text-green-500">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(totalExtraIncomes)}
+                {formatCurrency(totalExtraIncomes)}
               </span>
             </div>
           </CardContent>
@@ -198,10 +285,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-purple-500" />
               <span className="text-2xl font-bold text-purple-500">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(projectedBalance)}
+                {formatCurrency(projectedBalance)}
               </span>
             </div>
           </CardContent>
@@ -231,10 +315,7 @@ export default function Dashboard() {
                       <span className="font-medium">{bank.name}</span>
                     </div>
                     <span className="font-bold">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(bank.balance)}
+                      {formatCurrency(bank.currentBalance)}
                     </span>
                   </div>
                 ))}
@@ -263,14 +344,11 @@ export default function Dashboard() {
                       <PiggyBank className="w-5 h-5 text-purple-500" />
                       <div>
                         <span className="font-medium">{vault.name}</span>
-                        <span className="text-sm text-gray-500 ml-2">({vault.currency})</span>
+                        <span className="text-xs text-gray-500 ml-2">({vault.currency})</span>
                       </div>
                     </div>
                     <span className="font-bold">
-                      {new Intl.NumberFormat(vault.currency === 'BRL' ? 'pt-BR' : 'en-US', {
-                        style: 'currency',
-                        currency: vault.currency
-                      }).format(vault.balance)}
+                      {formatCurrency(vault.amount)}
                     </span>
                   </div>
                 ))}
@@ -316,10 +394,7 @@ export default function Dashboard() {
                         {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
                       </TableCell>
                       <TableCell className="text-red-600 font-medium text-right">
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(expense.amount)}
+                        {formatCurrency(expense.amount)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -363,10 +438,7 @@ export default function Dashboard() {
                           {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-red-600 font-medium text-right">
-                          {new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL'
-                          }).format(expense.amount)}
+                          {formatCurrency(expense.amount)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -410,10 +482,7 @@ export default function Dashboard() {
                           {format(new Date(income.date), "dd 'de' MMMM", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-green-600 font-medium text-right">
-                          {new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL'
-                          }).format(income.amount)}
+                          {formatCurrency(income.amount)}
                         </TableCell>
                       </TableRow>
                     ))}
