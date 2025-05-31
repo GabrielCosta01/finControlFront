@@ -37,14 +37,27 @@ import { ptBR } from 'date-fns/locale';
 interface BankData {
   id: string;
   name: string;
+  description: string;
+  totalIncome: number;
+  totalExpense: number;
+  currentBalance: number;
   balance: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface VaultData {
   id: string;
   name: string;
-  balance: number;
+  description: string;
+  amount: number;
   currency: string;
+  bankId: string | null;
+  bankName: string | null;
+  userId: string;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface PayableData {
@@ -99,26 +112,68 @@ export default function FinancialReport() {
   }, []);
 
   const loadData = async () => {
-    const [banksData, vaultsData, payablesData, receivablesData, transactionsData, categoriesData] = await Promise.all([
-      Bank.list(),
-      Vault.list(),
-      Payable.list(),
-      Receivable.list(),
-      Transaction.list(),
-      Category.list()
-    ]);
-    
-    setBanks(banksData);
-    setVaults(vaultsData);
-    setPayables(payablesData);
-    setReceivables(receivablesData);
-    setTransactions(transactionsData);
-    setCategories(categoriesData);
+    try {
+      const [banksData, vaultsData, payablesData, receivablesData, transactionsData, categoriesData] = await Promise.all([
+        Bank.list(),
+        Vault.list(),
+        Payable.list(),
+        Receivable.list(),
+        Transaction.list(),
+        Category.list()
+      ]);
+      
+      // Processamento dos dados dos bancos
+      const processedBanks = banksData.map(bank => ({
+        ...bank,
+        balance: Number(bank.currentBalance) || 0
+      }));
+
+      // Processamento dos dados dos cofres
+      const processedVaults = vaultsData.map(vault => ({
+        ...vault,
+        balance: Number(vault.amount) || 0
+      }));
+
+      // Processamento dos dados das contas a pagar
+      const processedPayables = payablesData.map(payable => ({
+        ...payable,
+        amount_total: Number(payable.amount_total) || 0
+      }));
+
+      // Processamento dos dados das contas a receber
+      const processedReceivables = receivablesData.map(receivable => ({
+        ...receivable,
+        amount_total: Number(receivable.amount_total) || 0
+      }));
+
+      // Processamento dos dados das transações
+      const processedTransactions = transactionsData.map(transaction => ({
+        ...transaction,
+        amount: Number(transaction.amount) || 0
+      }));
+      
+      setBanks(processedBanks);
+      setVaults(processedVaults);
+      setPayables(processedPayables);
+      setReceivables(processedReceivables);
+      setTransactions(processedTransactions);
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setBanks([]);
+      setVaults([]);
+      setPayables([]);
+      setReceivables([]);
+      setTransactions([]);
+      setCategories([]);
+    }
   };
 
-  const totalBankBalance = banks.reduce((total, bank) => total + bank.balance, 0);
+  const totalBankBalance = banks.reduce((total, bank) => total + (Number(bank.currentBalance) || 0), 0);
   const totalVaultBalance = vaults.reduce((total, vault) => {
-    if (vault.currency === 'BRL') return total + vault.balance;
+    if (vault.currency === 'BRL') {
+      return total + (Number(vault.amount) || 0);
+    }
     return total;
   }, 0);
   const totalBalance = totalBankBalance + totalVaultBalance;
@@ -173,6 +228,17 @@ export default function FinancialReport() {
       return acc;
     }, {} as Record<string, number>);
 
+  const formatCurrency = (value: number | string) => {
+    const numericValue = typeof value === 'string'
+      ? parseFloat(value.replace(/[^\d.-]/g, ''))
+      : Number(value);
+
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(isNaN(numericValue) ? 0 : numericValue);
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -217,10 +283,7 @@ export default function FinancialReport() {
             <div className="flex items-center gap-2">
               <Wallet className="w-5 h-5 text-blue-500" />
               <span className="text-2xl font-bold text-gray-900">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(totalBalance)}
+                {formatCurrency(totalBalance)}
               </span>
             </div>
           </CardContent>
@@ -236,10 +299,7 @@ export default function FinancialReport() {
             <div className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-red-500" />
               <span className="text-2xl font-bold text-red-500">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(totalWithdrawals)}
+                {formatCurrency(totalWithdrawals)}
               </span>
             </div>
           </CardContent>
@@ -255,10 +315,7 @@ export default function FinancialReport() {
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-500" />
               <span className="text-2xl font-bold text-green-500">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(totalDeposits)}
+                {formatCurrency(totalDeposits)}
               </span>
             </div>
           </CardContent>
@@ -278,10 +335,7 @@ export default function FinancialReport() {
                   ? 'text-green-500' 
                   : 'text-red-500'
               }`}>
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(totalDeposits - totalWithdrawals)}
+                {formatCurrency(totalDeposits - totalWithdrawals)}
               </span>
             </div>
           </CardContent>
@@ -310,10 +364,7 @@ export default function FinancialReport() {
                     <div key={category} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <span className="font-medium">{category}</span>
                       <span className="font-bold text-red-500">
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(amount)}
+                        {formatCurrency(amount)}
                       </span>
                     </div>
                   ))}
@@ -342,10 +393,7 @@ export default function FinancialReport() {
                     <div key={category} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <span className="font-medium">{category}</span>
                       <span className="font-bold text-green-500">
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(amount)}
+                        {formatCurrency(amount)}
                       </span>
                     </div>
                   ))}
@@ -406,10 +454,7 @@ export default function FinancialReport() {
                           : "text-red-600 font-medium text-right"
                       }>
                         {transaction.type === 'DEPOSIT' ? "+" : "-"}
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(transaction.amount)}
+                        {formatCurrency(transaction.amount)}
                       </TableCell>
                     </TableRow>
                   ))}
