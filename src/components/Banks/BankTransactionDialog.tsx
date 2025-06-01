@@ -18,21 +18,16 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Bank, Expense, ExtraIncome } from "@/api/entities/all";
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Building2 } from "lucide-react";
+import { BankDto, CategoryDetailResponseDto, ExpenseCreateDto, ExtraIncomeDto } from "@/types";
+import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Building2, Calendar } from "lucide-react";
+import { toast } from 'react-toastify';
 
 interface BankTransactionDialogProps {
   open: boolean;
   onClose: () => void;
-  bank: {
-    id: string;
-    name: string;
-    currentBalance: number;
-  };
+  bank: Pick<BankDto, 'id' | 'name' | 'currentBalance'>;
   type: "DEPOSIT" | "WITHDRAWAL";
-  categories: Array<{
-    id: string;
-    description: string;
-  }>;
+  categories: CategoryDetailResponseDto[];
   onTransactionComplete: () => void;
 }
 
@@ -47,39 +42,53 @@ export default function BankTransactionDialog({
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState<string>("_none");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !amount) return;
+    
+    // Validação de todos os campos obrigatórios
+    if (!description.trim()) {
+      toast.warning("Por favor, informe uma descrição");
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.warning("Por favor, informe um valor válido");
+      return;
+    }
+
+    if (!date) {
+      toast.warning("Por favor, selecione uma data");
+      return;
+    }
+
+    if (categoryId === "_none") {
+      toast.warning("Por favor, selecione uma categoria");
+      return;
+    }
 
     setLoading(true);
     try {
       // Create transaction record based on type
       if (type === "WITHDRAWAL") {
-        const expenseData: any = {
+        const expenseData: ExpenseCreateDto = {
           name: description.trim(),
           value: parseFloat(amount),
           bankId: bank.id,
-          expenseDate: new Date().toISOString().slice(0, 10)
+          expenseDate: date,
+          categoryId
         };
-
-        if (categoryId !== "_none") {
-          expenseData.categoryId = categoryId;
-        }
 
         await Expense.create(expenseData);
       } else {
-        const incomeData: any = {
+        const incomeData: ExtraIncomeDto = {
           description: description.trim(),
           amount: parseFloat(amount),
-          bankId: bank.id,
-          date: new Date().toISOString().slice(0, 10)
+          date: date,
+          categoryId
         };
-
-        if (categoryId !== "_none") {
-          incomeData.categoryId = categoryId;
-        }
 
         await ExtraIncome.create(incomeData);
       }
@@ -93,11 +102,13 @@ export default function BankTransactionDialog({
         balance: newBalance
       });
 
+      toast.success(`${type === "DEPOSIT" ? "Depósito" : "Saque"} realizado com sucesso!`);
       onTransactionComplete();
       onClose();
 
     } catch (error) {
       console.error("Error processing transaction:", error);
+      toast.error(`Erro ao realizar ${type === "DEPOSIT" ? "depósito" : "saque"}. Tente novamente.`);
     } finally {
       setLoading(false);
     }
@@ -125,7 +136,7 @@ export default function BankTransactionDialog({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                Descrição
+                Descrição <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="description"
@@ -139,11 +150,11 @@ export default function BankTransactionDialog({
 
             <div className="space-y-2">
               <Label htmlFor="amount" className="text-sm font-medium text-gray-700">
-                Valor
+                Valor <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                  R$
+                  
                 </span>
                 <Input
                   id="amount"
@@ -160,8 +171,26 @@ export default function BankTransactionDialog({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="date" className="text-sm font-medium text-gray-700">
+                Data <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                  className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200 rounded-md"
+                  required
+                />
+                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="category" className="text-sm font-medium text-gray-700">
-                Categoria
+                Categoria <span className="text-red-500">*</span>
               </Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger 
@@ -172,15 +201,15 @@ export default function BankTransactionDialog({
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-200 rounded-md shadow-lg">
                   <SelectItem value="_none" className="text-gray-500 hover:bg-gray-50 transition-colors duration-200">
-                    Sem categoria
+                    Selecione uma categoria
                   </SelectItem>
                   {categories.map(category => (
                     <SelectItem 
-                      key={category.id} 
-                      value={category.id}
+                      key={category.category.id} 
+                      value={category.category.id}
                       className="hover:bg-gray-50 transition-colors duration-200"
                     >
-                      {category.description}
+                      {category.category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Receivable, Category, Bank, Transaction } from '@/api/entities/all';
+import { withAuth } from '@/components/withAuth';
 
 interface ReceivableData {
   id: string;
@@ -77,7 +78,7 @@ const STATUS_LABELS = {
   LATE: "Atrasado"
 };
 
-export default function Receivables() {
+function ReceivablesPage() {
   const [receivables, setReceivables] = useState<ReceivableData[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [banks, setBanks] = useState<BankData[]>([]);
@@ -370,3 +371,5 @@ export default function Receivables() {
     </div>
   );
 }
+
+export default withAuth(ReceivablesPage);

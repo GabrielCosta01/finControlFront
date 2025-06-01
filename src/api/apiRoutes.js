@@ -25,6 +25,7 @@ export const ROUTES = {
   CATEGORIES: {
     BASE: `${BASE_PATH}/categories`,
     DETAIL: (id) => `${BASE_PATH}/categories/${id}`,
+    UPDATE_ALL: `${BASE_PATH}/categories/user-all`,
   },
   
   // Bancos
@@ -33,6 +34,14 @@ export const ROUTES = {
     DETAIL: (id) => `${BASE_PATH}/banks/${id}`,
     CLEAR_INCOMES: (id) => `${BASE_PATH}/banks/${id}/clear-incomes`,
     CLEAR_EXPENSES: (id) => `${BASE_PATH}/banks/${id}/clear-expenses`,
+    UPDATE_ALL: `${BASE_PATH}/banks/update-all`,
+    ADD_MONEY: (id) => `${BASE_PATH}/banks/${id}/add-money`,
+    REMOVE_MONEY: (id) => `${BASE_PATH}/banks/${id}/remove-money`,
+    TRANSFER: `${BASE_PATH}/banks/transfer`,
+    ADD_MONEY_ALL: `${BASE_PATH}/banks/add-money-all`,
+    REMOVE_MONEY_ALL: `${BASE_PATH}/banks/remove-money-all`,
+    METRICS: `${BASE_PATH}/banks/metrics`,
+    DELETE_ALL: `${BASE_PATH}/banks/delete-all`,
   },
   
   // Cofres (Vaults)
@@ -46,31 +55,38 @@ export const ROUTES = {
   EXPENSES: {
     BASE: `${BASE_PATH}/expenses`,
     DETAIL: (id) => `${BASE_PATH}/expenses/${id}`,
+    UPDATE_ALL: `${BASE_PATH}/expenses/user-all`,
   },
 
   // Renda Extra
   EXTRA_INCOME: {
-    BASE: `${BASE_PATH}/extra-income`,
+    BASE: `${BASE_PATH}/extra-incomes`,
+    DETAIL: (id) => `${BASE_PATH}/extra-incomes/${id}`,
+    UPDATE_ALL: `${BASE_PATH}/extra-incomes`,
+    DELETE_ALL: `${BASE_PATH}/extra-incomes`,
+    TRANSFER: `${BASE_PATH}/extra-incomes/transfer`,
+    SUBTRACT: (id) => `${BASE_PATH}/extra-incomes/${id}/subtract`,
+    ADD: (id) => `${BASE_PATH}/extra-incomes/${id}/add`,
+    SUBTRACT_ALL: `${BASE_PATH}/extra-incomes/subtract`,
+    ADD_ALL: `${BASE_PATH}/extra-incomes/add`,
+    BY_CATEGORY: (categoryId) => `${BASE_PATH}/extra-incomes/category/${categoryId}`,
+    DELETE_BY_CATEGORY: (categoryId) => `${BASE_PATH}/extra-incomes/category/${categoryId}`,
+    BY_BANK: (bankId) => `${BASE_PATH}/extra-incomes/bank/${bankId}`,
+    DELETE_BY_BANK: (bankId) => `${BASE_PATH}/extra-incomes/bank/${bankId}`
   },
   
   // Contas a Pagar
-  PAYABLES: {
-    BASE: `${BASE_PATH}/payables`,
-    DETAIL: (id) => `${BASE_PATH}/payables/${id}`,
-    PARCELS: (id) => `${BASE_PATH}/payables/${id}/parcels`,
-  },
-  
-  // Parcelas de Contas a Pagar
-  PAYABLE_PARCELS: {
-    BASE: `${BASE_PATH}/payable-parcels`,
-    DETAIL: (id) => `${BASE_PATH}/payable-parcels/${id}`,
+  BILLS: {
+    BASE: `${BASE_PATH}/bills`,
+    DETAIL: (id) => `${BASE_PATH}/bills/${id}`,
+    MARK_AS_PAID: (id) => `${BASE_PATH}/bills/${id}/pay`,
   },
   
   // Contas a Receber
   RECEIVABLES: {
     BASE: `${BASE_PATH}/receivables`,
     DETAIL: (id) => `${BASE_PATH}/receivables/${id}`,
-    INSTALLMENTS: (id) => `${BASE_PATH}/receivables/${id}/installments`,
+    MARK_AS_RECEIVED: (id) => `${BASE_PATH}/receivables/${id}/receive`,
   },
   
   // Parcelas de Contas a Receber

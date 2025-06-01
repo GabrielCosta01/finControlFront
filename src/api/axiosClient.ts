@@ -1,4 +1,9 @@
-import axios from 'axios';
+import axios, { 
+  AxiosInstance, 
+  InternalAxiosRequestConfig,
+  AxiosResponse, 
+  AxiosError 
+} from 'axios';
 
 // Usar a variável de ambiente ou fallback para localhost em desenvolvimento
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fincontrolback-n4bs.onrender.com';
@@ -6,7 +11,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fincontrolback-
 // Log para depuração da URL base
 console.log('API_BASE_URL:', API_BASE_URL);
 
-const axiosClient = axios.create({
+const axiosClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -21,7 +26,7 @@ const axiosClient = axios.create({
  * - Converte strings vazias em campos de data para null
  * - Processa recursivamente objetos aninhados
  */
-const processRequestData = (data) => {
+const processRequestData = (data: any): any => {
   if (!data || typeof data !== 'object') return data;
   
   // Se for um array, processa cada item
@@ -54,17 +59,20 @@ const processRequestData = (data) => {
 };
 
 axiosClient.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     // Log para depuração de requisições
     console.log('Request URL:', `${config.baseURL}${config.url}`);
     
     // Não adicionar token para rotas públicas ou rotas de autenticação
-    if (!config.url.includes('/public/') && 
-        !config.url.includes('/auth/reset-password')) {
+    if (!config.url?.includes('/auth/login') && 
+        !config.url?.includes('/auth/register') && 
+        !config.url?.includes('/auth/reset-password')) {
       const token = localStorage.getItem('authToken');
       if (token) {
-        // Adiciona o prefixo Bearer ao token
-        config.headers.Authorization = `Bearer ${token}`;
+        // Adiciona o prefixo Bearer ao token apenas se ele ainda não tiver
+        const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+        config.headers.set('Authorization', bearerToken);
+        console.log('Token enviado:', bearerToken); // Log para debug
       }
     }
     
@@ -75,12 +83,12 @@ axiosClient.interceptors.request.use(
     
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: AxiosError) => Promise.reject(error)
 );
 
 axiosClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
     console.error('API Error:', error);
     
     // Tratamento específico para erro de timeout
@@ -91,7 +99,8 @@ axiosClient.interceptors.response.use(
     
     if (error.response?.status === 401) {
       // Verifica se não é uma rota pública ou de autenticação
-      if (!error.config?.url?.includes('/public/') && 
+      if (!error.config?.url?.includes('/auth/login') && 
+          !error.config?.url?.includes('/auth/register') && 
           !error.config?.url?.includes('/auth/reset-password')) {
         localStorage.removeItem('authToken');
         

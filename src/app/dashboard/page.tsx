@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bank, Vault, Expense, ExtraIncome } from '@/api/entities/all';
+import { Bank, Vault, Payable as Expense, ExtraIncome } from '@/api/entities/all';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,54 +31,65 @@ import {
 } from "lucide-react";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { withAuth } from '@/components/withAuth';
 
-interface BankData {
+// Tipos
+interface BankDto {
   id: string;
   name: string;
   description: string;
   totalIncome: number;
   totalExpense: number;
-  currentBalance: number | string;
-  balance: number;
+  currentBalance: number;
   createdAt: string;
   updatedAt: string;
 }
 
-interface VaultData {
+interface VaultDto {
   id: string;
   name: string;
   description: string;
-  amount: number | string;
+  amount: number;
   currency: string;
-  bankId: string | null;
-  bankName: string | null;
+  bankId?: string;
+  bankName?: string;
   userId: string;
-  balance: number;
   createdAt: string;
   updatedAt: string;
 }
 
-interface ExpenseData {
-  id: string;
-  description: string;
-  amount: number | string;
-  due_date: string;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
+enum BillStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  OVERDUE = 'OVERDUE',
+  PAID_LATE = 'PAID_LATE'
 }
 
-interface ExtraIncomeData {
+interface DashboardBankData extends BankDto {}
+interface DashboardVaultData extends VaultDto {}
+
+interface DashboardExpenseData {
   id: string;
   description: string;
-  amount: number | string;
+  amount: number;
+  dueDate: string;
+  status: BillStatus;
+}
+
+interface DashboardExtraIncomeData {
+  amount: number;
+  categoryId: string;
+  description: string;
   date: string;
-  status: 'PENDING' | 'RECEIVED';
+  id?: string;
+  status?: 'PENDING' | 'RECEIVED';
 }
 
-export default function Dashboard() {
-  const [banks, setBanks] = useState<BankData[]>([]);
-  const [vaults, setVaults] = useState<VaultData[]>([]);
-  const [expenses, setExpenses] = useState<ExpenseData[]>([]);
-  const [extraIncomes, setExtraIncomes] = useState<ExtraIncomeData[]>([]);
+function DashboardPage() {
+  const [banks, setBanks] = useState<DashboardBankData[]>([]);
+  const [vaults, setVaults] = useState<DashboardVaultData[]>([]);
+  const [expenses, setExpenses] = useState<DashboardExpenseData[]>([]);
+  const [extraIncomes, setExtraIncomes] = useState<DashboardExtraIncomeData[]>([]);
 
   useEffect(() => {
     loadData();
@@ -86,69 +97,46 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [banksData, vaultsData, expensesData, extraIncomesData] = await Promise.all([
-        Bank.list(),
-        Vault.list(),
-        Expense.list(),
-        ExtraIncome.list()
-      ]);
-      
-      // Processamento dos dados dos bancos usando currentBalance
-      const processedBanks = banksData.map(bank => {
-        const balance = typeof bank.currentBalance === 'string'
-          ? parseFloat(bank.currentBalance.replace(/[^\d.-]/g, ''))
-          : Number(bank.currentBalance);
+      // Carrega os dados dos bancos primeiro
+      const banksData = await Bank.list();
+      setBanks(banksData);
 
-        return {
-          ...bank,
-          balance: isNaN(balance) ? 0 : balance
-        };
-      });
+      // Tenta carregar os outros dados
+      try {
+        const vaultsData = await Vault.list();
+        setVaults(vaultsData);
+      } catch (error) {
+        console.error('Erro ao carregar cofres:', error);
+        setVaults([]);
+      }
 
-      // Processamento dos dados dos cofres usando amount
-      const processedVaults = vaultsData.map(vault => {
-        const balance = typeof vault.amount === 'string'
-          ? parseFloat(vault.amount.replace(/[^\d.-]/g, ''))
-          : Number(vault.amount);
+      try {
+        const billsData = await Expense.list();
+        const processedExpenses = billsData.map(response => ({
+          id: response.id,
+          description: response.expense.description,
+          amount: Number(response.expense.value) || 0,
+          dueDate: response.dueDate,
+          status: response.status
+        }));
+        setExpenses(processedExpenses);
+      } catch (error) {
+        console.error('Erro ao carregar despesas:', error);
+        setExpenses([]);
+      }
 
-        return {
-          ...vault,
-          balance: isNaN(balance) ? 0 : balance
-        };
-      });
-
-      // Processamento dos dados das despesas
-      const processedExpenses = expensesData.map(expense => {
-        const amount = typeof expense.amount === 'string'
-          ? parseFloat(expense.amount.replace(/[^\d.-]/g, ''))
-          : Number(expense.amount);
-
-        return {
-          ...expense,
-          amount: isNaN(amount) ? 0 : amount
-        };
-      });
-
-      // Processamento dos dados das rendas extras
-      const processedExtraIncomes = extraIncomesData.map(income => {
-        const amount = typeof income.amount === 'string'
-          ? parseFloat(income.amount.replace(/[^\d.-]/g, ''))
-          : Number(income.amount);
-
-        return {
+      try {
+        const extraIncomesData = await ExtraIncome.list();
+        const processedIncomes = extraIncomesData.map(income => ({
           ...income,
-          amount: isNaN(amount) ? 0 : amount
-        };
-      });
-      
-      // Debug dos valores
-      console.log('Bancos processados:', processedBanks);
-      console.log('Cofres processados:', processedVaults);
-      
-      setBanks(processedBanks);
-      setVaults(processedVaults);
-      setExpenses(processedExpenses);
-      setExtraIncomes(processedExtraIncomes);
+          description: income.description || '',
+          status: 'PENDING' as const
+        }));
+        setExtraIncomes(processedIncomes);
+      } catch (error) {
+        console.error('Erro ao carregar rendas extras:', error);
+        setExtraIncomes([]);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       setBanks([]);
@@ -159,18 +147,12 @@ export default function Dashboard() {
   };
 
   const totalBankBalance = banks.reduce((total, bank) => {
-    const balance = typeof bank.currentBalance === 'string'
-      ? parseFloat(bank.currentBalance.replace(/[^\d.-]/g, ''))
-      : Number(bank.currentBalance);
-    return total + (isNaN(balance) ? 0 : balance);
+    return total + (Number(bank.currentBalance) || 0);
   }, 0);
 
   const totalVaultBalance = vaults.reduce((total, vault) => {
     if (vault.currency === 'BRL') {
-      const balance = typeof vault.amount === 'string'
-        ? parseFloat(vault.amount.replace(/[^\d.-]/g, ''))
-        : Number(vault.amount);
-      return total + (isNaN(balance) ? 0 : balance);
+      return total + (Number(vault.amount) || 0);
     }
     return total;
   }, 0);
@@ -178,7 +160,7 @@ export default function Dashboard() {
   const totalBalance = totalBankBalance + totalVaultBalance;
 
   const totalExpenses = expenses
-    .filter(p => p.status === 'PENDING')
+    .filter(p => p.status === BillStatus.PENDING)
     .reduce((total, p) => total + (Number(p.amount) || 0), 0);
 
   const totalExtraIncomes = extraIncomes
@@ -188,8 +170,8 @@ export default function Dashboard() {
   const projectedBalance = totalBalance - totalExpenses + totalExtraIncomes;
 
   const upcomingExpenses = expenses
-    .filter(p => p.status === 'PENDING')
-    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+    .filter(p => p.status === BillStatus.PENDING)
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 5);
 
   const upcomingExtraIncomes = extraIncomes
@@ -197,15 +179,11 @@ export default function Dashboard() {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
 
-  const formatCurrency = (value: number | string) => {
-    const numericValue = typeof value === 'string'
-      ? parseFloat(value.replace(/[^\d.-]/g, ''))
-      : Number(value);
-
+  const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(isNaN(numericValue) ? 0 : numericValue);
+    }).format(value);
   };
 
   return (
@@ -391,7 +369,7 @@ export default function Dashboard() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
+                        {format(new Date(expense.dueDate), "dd 'de' MMMM", { locale: ptBR })}
                       </TableCell>
                       <TableCell className="text-red-600 font-medium text-right">
                         {formatCurrency(expense.amount)}
@@ -435,7 +413,7 @@ export default function Dashboard() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
+                          {format(new Date(expense.dueDate), "dd 'de' MMMM", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-red-600 font-medium text-right">
                           {formatCurrency(expense.amount)}
@@ -495,4 +473,6 @@ export default function Dashboard() {
       </div>
     </>
   );
-} 
+}
+
+export default withAuth(DashboardPage); 

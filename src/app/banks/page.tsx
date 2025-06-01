@@ -1,44 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Bank, Category, Expense, ExtraIncome } from '@/api/entities/all';
-
-interface BankData {
-  id: string;
-  name: string;
-  description: string;
-  totalIncome: number;
-  totalExpense: number;
-  currentBalance: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CategoryData {
-  id: string;
-  description: string;
-  type: 'EXPENSE' | 'INCOME';
-}
-
-interface ExpenseData {
-  id: string;
-  description: string;
-  amount: number;
-  due_date: string;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
-  category_id?: string;
-  bank_id?: string;
-}
-
-interface ExtraIncomeData {
-  id: string;
-  description: string;
-  amount: number;
-  date: string;
-  status: 'PENDING' | 'RECEIVED';
-  category_id?: string;
-  bank_id?: string;
-}
-
+import { BankDto, CategoryDetailResponseDto, ExpenseDetailResponseDto, ExtraIncomeDto } from '@/types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,6 +15,7 @@ import {
 import { Plus, Building2, ArrowUpCircle, ArrowDownCircle, RefreshCw, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import BankTransactionDialog from '@/components/Banks/BankTransactionDialog';
 import { toast } from 'react-toastify';
+import { withAuth } from '@/components/withAuth';
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return "Data não disponível";
@@ -76,14 +40,14 @@ const formatDate = (dateString?: string) => {
   }
 };
 
-export default function Banks() {
-  const [banks, setBanks] = useState<BankData[]>([]);
-  const [categories, setCategories] = useState<CategoryData[]>([]);
-  const [expenses, setExpenses] = useState<ExpenseData[]>([]);
-  const [extraIncomes, setExtraIncomes] = useState<ExtraIncomeData[]>([]);
+function BanksPage() {
+  const [banks, setBanks] = useState<BankDto[]>([]);
+  const [categories, setCategories] = useState<CategoryDetailResponseDto[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseDetailResponseDto[]>([]);
+  const [extraIncomes, setExtraIncomes] = useState<ExtraIncomeDto[]>([]);
   const [newBank, setNewBank] = useState({ name: "", balance: "" });
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
-  const [currentBank, setCurrentBank] = useState<BankData | null>(null);
+  const [currentBank, setCurrentBank] = useState<BankDto | null>(null);
   const [transactionType, setTransactionType] = useState<'DEPOSIT' | 'WITHDRAWAL' | null>(null);
 
   useEffect(() => {
@@ -91,40 +55,51 @@ export default function Banks() {
   }, []);
 
   const loadData = async () => {
-    const [banksData, categoriesData, expensesData, extraIncomesData] = await Promise.all([
-      Bank.list(),
-      Category.list(),
-      Expense.list(),
-      ExtraIncome.list()
-    ]);
-    
-    console.log("Dados dos bancos:", banksData);
-    setBanks(banksData);
-    setCategories(categoriesData);
-    setExpenses(expensesData.filter((e: ExpenseData) => e.bank_id));
-    setExtraIncomes(extraIncomesData.filter((i: ExtraIncomeData) => i.bank_id));
+    try {
+      const [banksData, categoriesData, expensesData, extraIncomesData] = await Promise.all([
+        Bank.list(),
+        Category.list(),
+        Expense.list(),
+        ExtraIncome.list()
+      ]);
+      
+      console.log("Dados dos bancos:", banksData);
+      setBanks(banksData);
+      setCategories(categoriesData);
+      setExpenses(expensesData);
+      setExtraIncomes(extraIncomesData);
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+      toast.error("Não foi possível carregar os dados. Tente novamente mais tarde.");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBank.name.trim() || !newBank.balance) return;
 
-    await Bank.create({
-      name: newBank.name.trim(),
-      initialBalance: parseFloat(newBank.balance)
-    });
+    try {
+      await Bank.create({
+        name: newBank.name.trim(),
+        initialBalance: parseFloat(newBank.balance)
+      });
 
-    setNewBank({ name: "", balance: "" });
-    loadData();
+      toast.success("Banco criado com sucesso!");
+      setNewBank({ name: "", balance: "" });
+      loadData();
+    } catch (error) {
+      console.error("Erro ao criar banco:", error);
+      toast.error("Não foi possível criar o banco. Tente novamente mais tarde.");
+    }
   };
 
-  const openTransactionDialog = (bank: BankData, type: 'DEPOSIT' | 'WITHDRAWAL') => {
+  const openTransactionDialog = (bank: BankDto, type: 'DEPOSIT' | 'WITHDRAWAL') => {
     setCurrentBank(bank);
     setTransactionType(type);
     setTransactionDialogOpen(true);
   };
 
-  const handleDelete = async (bank: BankData) => {
+  const handleDelete = async (bank: BankDto) => {
     if (!confirm(`Tem certeza que deseja excluir o banco "${bank.name}"? Esta ação não pode ser desfeita.`)) {
       return;
     }
@@ -217,17 +192,19 @@ export default function Banks() {
               <CardHeader className="border-b border-gray-100 bg-gradient-to-br from-white to-gray-50/80">
                 <CardTitle className="text-lg font-semibold">Resumo Geral</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4 p-6">
-                <div className="space-y-1 bg-blue-50/50 p-4 rounded-lg border border-blue-100/50">
-                  <p className="text-sm text-gray-600">Total em Bancos</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                      .format(banks.reduce((total, bank) => total + bank.currentBalance, 0))}
-                  </p>
-                </div>
-                <div className="space-y-1 bg-gray-50/50 p-4 rounded-lg border border-gray-100/50">
-                  <p className="text-sm text-gray-600">Quantidade</p>
-                  <p className="text-2xl font-bold text-gray-900">{banks.length}</p>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 bg-blue-50/50 p-4 rounded-lg border border-blue-100/50">
+                    <p className="text-sm text-gray-600">Total em Bancos</p>
+                    <p className="text-xl font-bold text-gray-900 break-words">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                        .format(banks.reduce((total, bank) => total + bank.currentBalance, 0))}
+                    </p>
+                  </div>
+                  <div className="space-y-1 bg-gray-50/50 p-4 rounded-lg border border-gray-100/50">
+                    <p className="text-sm text-gray-600">Quantidade</p>
+                    <p className="text-xl font-bold text-gray-900">{banks.length}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -247,80 +224,70 @@ export default function Banks() {
                         <Building2 className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform duration-200" />
                         {bank.name}
                       </CardTitle>
-                      <div className="flex items-center gap-2">
-                        {bank.totalIncome > 0 && (
-                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-50 text-green-600 border border-green-100/50 flex items-center gap-1 transition-colors duration-200 hover:bg-green-100/50">
-                            <TrendingUp className="w-3 h-3" />
-                            +{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bank.totalIncome)}
-                          </span>
-                        )}
-                        {bank.totalExpense > 0 && (
-                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-50 text-red-600 border border-red-100/50 flex items-center gap-1 transition-colors duration-200 hover:bg-red-100/50">
-                            <TrendingDown className="w-3 h-3" />
-                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bank.totalExpense)}
-                          </span>
-                        )}
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(bank)}
+                        className="text-gray-400 hover:text-red-500 transition-colors duration-200"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
+                    <CardDescription className="text-sm text-gray-500 mt-1">
+                      Última atualização: {formatDate(bank.updatedAt)}
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-4">
+                  <CardContent className="p-6">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">Saldo Atual</span>
-                        <span className="text-lg font-semibold text-gray-900">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bank.currentBalance)}
-                        </span>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                            <TrendingUp className="w-4 h-4 text-green-500" />
+                            Entradas
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                              .format(bank.totalIncome)}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                            <TrendingDown className="w-4 h-4 text-red-500" />
+                            Saídas
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                              .format(bank.totalExpense)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <span>Última atualização</span>
-                        <span>{formatDate(bank.updatedAt)}</span>
+                      <div className="pt-4 border-t border-gray-100">
+                        <p className="text-sm text-gray-500 mb-1">Saldo Atual</p>
+                        <p className={`text-2xl font-bold ${bank.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                            .format(bank.currentBalance)}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="border-t border-gray-100 bg-gray-50/50 flex justify-between gap-2 p-4">
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => openTransactionDialog(bank, 'DEPOSIT')}
-                        variant="outline"
-                        size="sm"
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
-                      >
-                        <ArrowUpCircle className="w-4 h-4 mr-1" />
-                        Entrada
-                      </Button>
-                      <Button
-                        onClick={() => openTransactionDialog(bank, 'WITHDRAWAL')}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                      >
-                        <ArrowDownCircle className="w-4 h-4 mr-1" />
-                        Saída
-                      </Button>
-                    </div>
+                  <CardFooter className="bg-gray-50/50 border-t border-gray-100 p-4">
                     <Button
-                      onClick={() => handleDelete(bank)}
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => openTransactionDialog(bank, 'DEPOSIT')}
+                      className="flex-1 bg-gradient-to-r mr-2 from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-all duration-200"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <ArrowUpCircle className="w-4 h-4 mr-2" />
+                      Depositar
+                    </Button>
+                    <Button
+                      onClick={() => openTransactionDialog(bank, 'WITHDRAWAL')}
+                      className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white transition-all duration-200"
+                    >
+                      <ArrowDownCircle className="w-4 h-4 mr-2" />
+                      Sacar
                     </Button>
                   </CardFooter>
                 </Card>
               ))}
-              
-              {banks.length === 0 && (
-                <Card className="md:col-span-2 bg-white shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200/80 rounded-lg overflow-hidden">
-                  <CardContent className="text-center py-12">
-                    <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">Nenhum banco cadastrado</h3>
-                    <p className="text-sm text-gray-500">
-                      Comece adicionando seu primeiro banco usando o formulário ao lado
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
         </div>
@@ -329,17 +296,19 @@ export default function Banks() {
       {currentBank && transactionType && (
         <BankTransactionDialog
           open={transactionDialogOpen}
-          bank={currentBank}
-          type={transactionType}
-          categories={categories}
           onClose={() => {
             setTransactionDialogOpen(false);
             setCurrentBank(null);
             setTransactionType(null);
           }}
+          bank={currentBank}
+          type={transactionType}
+          categories={categories}
           onTransactionComplete={loadData}
         />
       )}
     </div>
   );
 }
+
+export default withAuth(BanksPage);

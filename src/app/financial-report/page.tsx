@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { withAuth } from '@/components/withAuth';
 
 interface BankData {
   id: string;
@@ -93,7 +94,7 @@ interface CategoryData {
   type: 'EXPENSE' | 'INCOME';
 }
 
-export default function FinancialReport() {
+function FinancialReportPage() {
   const [banks, setBanks] = useState<BankData[]>([]);
   const [vaults, setVaults] = useState<VaultData[]>([]);
   const [payables, setPayables] = useState<PayableData[]>([]);
@@ -466,4 +467,6 @@ export default function FinancialReport() {
       </Card>
     </div>
   );
-} 
+}
+
+export default withAuth(FinancialReportPage); 

@@ -58,7 +58,7 @@ const RegisterPage = () => {
 
   const onSubmit = async (data: RegisterFormInputs) => {
     try {
-      console.log('Enviando dados de registro:', {...data, confirmPassword: '***'});
+      console.log('Enviando dados de registro:', {...data});
       
       const { confirmPassword, ...userData } = data;
       

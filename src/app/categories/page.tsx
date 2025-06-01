@@ -12,18 +12,19 @@ import {
 import { Plus, Tag, Trash2, RefreshCw, Edit, Check, X } from "lucide-react";
 import { Category } from '@/api/entities';
 import { toast } from 'react-toastify';
+import { CategoryDetailResponseDto, CategoryDataDto } from '@/types';
+import { withAuth } from '@/components/withAuth';
 
-interface CategoryType {
+interface CategoryType extends CategoryDataDto {
   id: string;
-  userId: string;
   name: string;
   description: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export default function Categories() {
-  const [categories, setCategories] = useState<CategoryType[]>([]);
+function CategoriesPage() {
+  const [categories, setCategories] = useState<CategoryDetailResponseDto[]>([]);
   const [newCategory, setNewCategory] = useState({
     name: '',
     description: ''
@@ -231,13 +232,13 @@ export default function Categories() {
                         <p className="text-sm text-gray-400">Adicione uma categoria usando o formulário ao lado</p>
                       </div>
                     ) : (
-                      categories.map((category) => (
+                      categories.map((categoryDetail) => (
                         <div
-                          key={category.id}
+                          key={categoryDetail.category.id}
                           className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow"
                         >
-                          {editingId === category.id ? (
-                            <div className="flex-1 flex items-center gap-2">
+                          {editingId === categoryDetail.category.id ? (
+                            <div key="editing" className="flex-1 flex items-center gap-2">
                               <div className="flex-1 space-y-2">
                                 <Input
                                   value={editName}
@@ -272,16 +273,16 @@ export default function Categories() {
                               </Button>
                             </div>
                           ) : (
-                            <>
+                            <div key="display" className="flex items-center justify-between w-full">
                               <div className="flex flex-col gap-1">
-                                <span className="font-medium text-gray-900">{category.name}</span>
-                                {category.description && category.description !== category.name && (
-                                  <span className="text-sm text-gray-500">{category.description}</span>
+                                <span className="font-medium text-gray-900">{categoryDetail.category.name}</span>
+                                {categoryDetail.category.description && categoryDetail.category.description !== categoryDetail.category.name && (
+                                  <span className="text-sm text-gray-500">{categoryDetail.category.description}</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button
-                                  onClick={() => startEditing(category)}
+                                  onClick={() => startEditing(categoryDetail.category)}
                                   variant="ghost"
                                   size="sm"
                                   disabled={loading}
@@ -290,7 +291,7 @@ export default function Categories() {
                                   <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button
-                                  onClick={() => handleDelete(category.id)}
+                                  onClick={() => handleDelete(categoryDetail.category.id)}
                                   variant="ghost"
                                   size="sm"
                                   disabled={loading}
@@ -299,7 +300,7 @@ export default function Categories() {
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
-                            </>
+                            </div>
                           )}
                         </div>
                       ))
@@ -314,3 +315,5 @@ export default function Categories() {
     </div>
   );
 }
+
+export default withAuth(CategoriesPage);

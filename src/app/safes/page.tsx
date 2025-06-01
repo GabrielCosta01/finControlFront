@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Vault as Safe, Bank, Category } from '@/api/entities/all';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { withAuth } from '@/components/withAuth';
 
 interface SafeData {
   id: string;
@@ -46,7 +47,7 @@ import { Plus, PiggyBank, ArrowUpCircle, ArrowDownCircle, RefreshCw } from "luci
 import SafeTransactionDialog from '@/components/Safes/SafeTransactionDialog';
 import { Label } from "@/components/ui/label";
 
-export default function Safes() {
+function SafesPage() {
   const [safes, setSafes] = useState<SafeData[]>([]);
   const [banks, setBanks] = useState<BankData[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
@@ -257,9 +258,6 @@ export default function Safes() {
                           className="w-full pl-8 bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500 placeholder:text-gray-500"
                           required
                         />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-medium">
-                          R$
-                        </span>
                       </div>
                     </div>
                     <div>
@@ -416,3 +414,5 @@ export default function Safes() {
     </div>
   );
 }
+
+export default withAuth(SafesPage);

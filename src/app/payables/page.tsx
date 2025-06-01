@@ -1,27 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Payable, Category, Bank, Transaction } from '@/api/entities/all';
+import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { Payable, Category, Bank, Expense } from '@/api/entities/all';
+import type { BillResponseDto, BillStatus, CategoryDetailResponseDto, BillCreateDto, ExpenseDataDto, ExpenseCreateDto } from '@/types';
+import type { RootState } from '@/store';
 
-interface PayableData {
-  id: string;
-  description: string;
-  amount_total: number;
-  due_date: string;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
-  total_installments: number;
-  payment_method?: string;
-  category_id?: string;
-  bank_id?: string;
-  created_date: string;
-  updated_date?: string;
-}
-
-interface CategoryData {
-  id: string;
-  description: string;
-  type: 'EXPENSE' | 'INCOME';
-}
+type PayableData = BillResponseDto;
+type CategoryData = CategoryDetailResponseDto['category'];
 
 interface BankData {
   id: string;
@@ -66,18 +53,22 @@ const PAYMENT_METHODS = {
 };
 
 const STATUS_COLORS = {
-  PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  PAID: "bg-green-100 text-green-800 border-green-200",
-  OVERDUE: "bg-red-100 text-red-800 border-red-200"
-};
+  'PENDING': "bg-yellow-100 text-yellow-800 border-yellow-200",
+  'PAID': "bg-green-100 text-green-800 border-green-200",
+  'OVERDUE': "bg-red-100 text-red-800 border-red-200",
+  'PAID_LATE': "bg-orange-100 text-orange-800 border-orange-200"
+} as const;
 
 const STATUS_LABELS = {
-  PENDING: "Pendente",
-  PAID: "Pago",
-  OVERDUE: "Atrasado"
-};
+  'PENDING': "Pendente",
+  'PAID': "Pago",
+  'OVERDUE': "Atrasado",
+  'PAID_LATE': "Pago com Atraso"
+} as const;
 
 export default function Payables() {
+  const router = useRouter();
+  const auth = useSelector((state: RootState) => state.auth);
   const [payables, setPayables] = useState<PayableData[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [banks, setBanks] = useState<BankData[]>([]);
@@ -92,8 +83,12 @@ export default function Payables() {
   });
 
   useEffect(() => {
+    if (!auth.isAuthenticated) {
+      router.push('/');
+      return;
+    }
     loadData();
-  }, []);
+  }, [auth.isAuthenticated, router]);
 
   const loadData = async () => {
     const [payablesData, categoriesData, banksData] = await Promise.all([
@@ -103,7 +98,7 @@ export default function Payables() {
     ]);
     
     setPayables(payablesData);
-    setCategories(categoriesData.filter((c: CategoryData) => c.type === 'EXPENSE'));
+    setCategories(categoriesData.map(c => c.category));
     setBanks(banksData);
   };
 
@@ -111,27 +106,44 @@ export default function Payables() {
     e.preventDefault();
     if (!newPayable.description.trim() || !newPayable.amount_total || !newPayable.due_date) return;
 
-    await Payable.create({
-      description: newPayable.description.trim(),
-      amount_total: parseFloat(newPayable.amount_total),
-      due_date: newPayable.due_date,
-      payment_method: newPayable.payment_method === "none" ? undefined : newPayable.payment_method,
-      category_id: newPayable.category_id === "none" ? undefined : newPayable.category_id,
-      bank_id: newPayable.bank_id === "none" ? undefined : newPayable.bank_id,
-      total_installments: parseInt(newPayable.total_installments),
-      status: 'PENDING'
-    });
+    try {
+      // Primeiro criamos a despesa
+      const expenseData: ExpenseCreateDto = {
+        name: newPayable.description.trim(),
+        description: newPayable.description.trim(),
+        value: parseFloat(newPayable.amount_total),
+        categoryId: newPayable.category_id === "none" ? "" : newPayable.category_id,
+        expenseDate: newPayable.due_date
+      };
 
-    setNewPayable({
-      description: "",
-      amount_total: "",
-      due_date: "",
-      payment_method: "none",
-      category_id: "none",
-      bank_id: "none",
-      total_installments: "1"
-    });
-    loadData();
+      const expenseResponse = await Expense.create(expenseData);
+
+      // Depois criamos a conta a pagar associada à despesa
+      const billData: BillCreateDto = {
+        expenseId: expenseResponse.expense.id,
+        bankId: newPayable.bank_id === "none" ? undefined : newPayable.bank_id,
+        paymentMethod: newPayable.payment_method === "none" ? 'OTHER' : newPayable.payment_method as any,
+        dueDate: newPayable.due_date,
+        autoPay: false
+      };
+
+      await Payable.create(billData);
+
+      setNewPayable({
+        description: "",
+        amount_total: "",
+        due_date: "",
+        payment_method: "none",
+        category_id: "none",
+        bank_id: "none",
+        total_installments: "1"
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error('Erro ao criar conta a pagar:', error);
+      // Aqui você pode adicionar uma notificação de erro para o usuário
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -222,7 +234,7 @@ export default function Payables() {
                         <SelectItem value="none">Nenhuma</SelectItem>
                         {categories.map(category => (
                           <SelectItem key={category.id} value={category.id}>
-                            {category.description}
+                            {category.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -300,26 +312,26 @@ export default function Payables() {
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
                                 <ArrowDownCircle className="w-4 h-4 text-red-500" />
-                                {payable.description}
+                                {payable.expense.name}
                               </div>
                             </TableCell>
                             <TableCell>
-                              {categories.find(c => c.id === payable.category_id)?.description || "-"}
+                              {categories.find(c => c.id === payable.expense.category.id)?.name || "-"}
                             </TableCell>
                             <TableCell>
-                              {banks.find(b => b.id === payable.bank_id)?.name || "-"}
+                              {payable.bank?.name || "-"}
                             </TableCell>
                             <TableCell>
-                              {format(new Date(payable.due_date), "dd 'de' MMMM", { locale: ptBR })}
+                              {format(new Date(payable.dueDate), "dd 'de' MMMM", { locale: ptBR })}
                             </TableCell>
                             <TableCell>
                               {new Intl.NumberFormat('pt-BR', {
                                 style: 'currency',
                                 currency: 'BRL'
-                              }).format(payable.amount_total)}
+                              }).format(payable.expense.value)}
                             </TableCell>
                             <TableCell>
-                              {payable.total_installments}x
+                              1x
                             </TableCell>
                             <TableCell>
                               <Badge className={STATUS_COLORS[payable.status]}>
