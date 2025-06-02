@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Receivable, Category, Bank, Transaction } from '@/api/entities/all';
+import { Receivable, Category, Bank } from '@/api/entities/all';
 import { withAuth } from '@/components/withAuth';
+import { toast } from 'react-toastify';
 
 interface ReceivableData {
   id: string;
@@ -97,15 +98,20 @@ function ReceivablesPage() {
   }, []);
 
   const loadData = async () => {
-    const [receivablesData, categoriesData, banksData] = await Promise.all([
-      Receivable.list(),
-      Category.list(),
-      Bank.list()
-    ]);
-    
-    setReceivables(receivablesData);
-    setCategories(categoriesData.filter((c: CategoryData) => c.type === 'INCOME'));
-    setBanks(banksData);
+    try {
+      const [receivablesData, categoriesData, banksData] = await Promise.all([
+        Receivable.list(),
+        Category.list(),
+        Bank.list()
+      ]);
+      
+      setReceivables(receivablesData.content || []);
+      setCategories(categoriesData.filter((c: CategoryData) => c.type === 'INCOME'));
+      setBanks(banksData);
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+      toast.error("Erro ao carregar os dados. Tente novamente.");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

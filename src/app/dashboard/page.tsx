@@ -32,38 +32,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { withAuth } from '@/components/withAuth';
-
-// Tipos
-interface BankDto {
-  id: string;
-  name: string;
-  description: string;
-  totalIncome: number;
-  totalExpense: number;
-  currentBalance: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface VaultDto {
-  id: string;
-  name: string;
-  description: string;
-  amount: number;
-  currency: string;
-  bankId?: string;
-  bankName?: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-enum BillStatus {
-  PENDING = 'PENDING',
-  PAID = 'PAID',
-  OVERDUE = 'OVERDUE',
-  PAID_LATE = 'PAID_LATE'
-}
+import type { BankDto, VaultDto, BillResponseDto, ReceivableResponseDto, BillStatus } from '@/types';
 
 interface DashboardBankData extends BankDto {}
 interface DashboardVaultData extends VaultDto {}
@@ -72,17 +41,21 @@ interface DashboardExpenseData {
   id: string;
   description: string;
   amount: number;
-  dueDate: string;
+  due_date: string;
   status: BillStatus;
 }
 
 interface DashboardExtraIncomeData {
-  amount: number;
-  categoryId: string;
+  id: string;
   description: string;
-  date: string;
-  id?: string;
-  status?: 'PENDING' | 'RECEIVED';
+  amount_total: number;
+  due_date: string;
+  status: 'PENDING' | 'RECEIVED' | 'LATE';
+  category_id?: string;
+  bank_id?: string;
+  total_installments: number;
+  created_date: string;
+  updated_date?: string;
 }
 
 function DashboardPage() {
@@ -114,9 +87,9 @@ function DashboardPage() {
         const billsData = await Expense.list();
         const processedExpenses = billsData.map(response => ({
           id: response.id,
-          description: response.expense.description,
+          description: response.expense.name,
           amount: Number(response.expense.value) || 0,
-          dueDate: response.dueDate,
+          due_date: response.due_date,
           status: response.status
         }));
         setExpenses(processedExpenses);
@@ -128,9 +101,16 @@ function DashboardPage() {
       try {
         const extraIncomesData = await ExtraIncome.list();
         const processedIncomes = extraIncomesData.map(income => ({
-          ...income,
-          description: income.description || '',
-          status: 'PENDING' as const
+          id: income.id,
+          description: income.description,
+          amount_total: Number(income.amount) || 0,
+          due_date: income.createdAt || new Date().toISOString(),
+          status: 'PENDING' as const,
+          category_id: income.categoryId,
+          bank_id: income.bankId,
+          total_installments: 1,
+          created_date: income.createdAt || new Date().toISOString(),
+          updated_date: income.updatedAt
         }));
         setExtraIncomes(processedIncomes);
       } catch (error) {
@@ -160,23 +140,27 @@ function DashboardPage() {
   const totalBalance = totalBankBalance + totalVaultBalance;
 
   const totalExpenses = expenses
-    .filter(p => p.status === BillStatus.PENDING)
+    .filter(p => p.status === 'PENDING')
     .reduce((total, p) => total + (Number(p.amount) || 0), 0);
 
   const totalExtraIncomes = extraIncomes
     .filter(r => r.status === 'PENDING')
-    .reduce((total, r) => total + (Number(r.amount) || 0), 0);
+    .reduce((total, r) => total + (Number(r.amount_total) || 0), 0);
 
-  const projectedBalance = totalBalance - totalExpenses + totalExtraIncomes;
+  const totalReceivables = extraIncomes
+    .filter(r => r.status === 'PENDING')
+    .reduce((total, r) => total + (Number(r.amount_total) || 0), 0);
+
+  const projectedBalance = totalBalance - totalExpenses + totalReceivables;
 
   const upcomingExpenses = expenses
-    .filter(p => p.status === BillStatus.PENDING)
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .filter(p => p.status === 'PENDING')
+    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
     .slice(0, 5);
 
   const upcomingExtraIncomes = extraIncomes
     .filter(r => r.status === 'PENDING')
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
     .slice(0, 5);
 
   const formatCurrency = (value: number) => {
@@ -369,7 +353,7 @@ function DashboardPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(expense.dueDate), "dd 'de' MMMM", { locale: ptBR })}
+                        {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
                       </TableCell>
                       <TableCell className="text-red-600 font-medium text-right">
                         {formatCurrency(expense.amount)}
@@ -413,7 +397,7 @@ function DashboardPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(expense.dueDate), "dd 'de' MMMM", { locale: ptBR })}
+                          {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-red-600 font-medium text-right">
                           {formatCurrency(expense.amount)}
@@ -457,10 +441,10 @@ function DashboardPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(income.date), "dd 'de' MMMM", { locale: ptBR })}
+                          {format(new Date(income.due_date), "dd 'de' MMMM", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-green-600 font-medium text-right">
-                          {formatCurrency(income.amount)}
+                          {formatCurrency(income.amount_total)}
                         </TableCell>
                       </TableRow>
                     ))}

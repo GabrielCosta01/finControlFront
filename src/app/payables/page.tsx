@@ -316,13 +316,13 @@ export default function Payables() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {categories.find(c => c.id === payable.expense.category.id)?.name || "-"}
+                              {categories.find(c => c.id === payable.expense.categoryId)?.name || "-"}
                             </TableCell>
                             <TableCell>
-                              {payable.bank?.name || "-"}
+                              {banks.find(b => b.id === payable.bank_id)?.name || "-"}
                             </TableCell>
                             <TableCell>
-                              {format(new Date(payable.dueDate), "dd 'de' MMMM", { locale: ptBR })}
+                              {format(new Date(payable.due_date), "dd 'de' MMMM", { locale: ptBR })}
                             </TableCell>
                             <TableCell>
                               {new Intl.NumberFormat('pt-BR', {

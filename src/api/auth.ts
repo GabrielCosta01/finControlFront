@@ -10,6 +10,7 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
+  confirmPassword: string;
   salary: number;
 }
 
@@ -54,7 +55,28 @@ export const register = async (data: RegisterData): Promise<RegisterResponse> =>
   try {
     const response = await axiosClient.post(ROUTES.AUTH.REGISTER, data);
     return response.data;
-  } catch (error) {
-    throw error;
+  } catch (error: any) {
+    // Tratamento específico para erros da API
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    
+    // Tratamento para erros de validação com array de mensagens
+    if (error.response?.status === 400 && Array.isArray(error.response.data)) {
+      throw new Error(error.response.data.join('\n'));
+    }
+
+    // Tratamento para erros de validação
+    if (error.response?.status === 400) {
+      throw new Error('Dados inválidos. Verifique as informações e tente novamente.');
+    }
+
+    // Tratamento para erro de email já existente
+    if (error.response?.status === 409) {
+      throw new Error('Este email já está em uso. Por favor, use outro email.');
+    }
+
+    // Erro genérico
+    throw new Error('Não foi possível realizar o cadastro. Tente novamente mais tarde.');
   }
 }; 

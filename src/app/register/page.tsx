@@ -52,7 +52,7 @@ const RegisterPage = () => {
     if (error) {
       // Mostrar o erro detalhado
       console.log('Erro detalhado de registro:', error);
-      toast.error(`Erro: ${error}`);
+      toast.error(error);
     }
   }, [error]);
 
@@ -60,22 +60,16 @@ const RegisterPage = () => {
     try {
       console.log('Enviando dados de registro:', {...data});
       
-      const { confirmPassword, ...userData } = data;
-      
-      const resultAction = await dispatch(registerUser(userData));
+      const resultAction = await dispatch(registerUser(data));
       
       if (registerUser.fulfilled.match(resultAction)) {
         toast.success('Cadastro realizado com sucesso!');
-        console.log('Registro bem-sucedido:', resultAction.payload);
         // Redirecionar para login após um breve delay
         setTimeout(() => {
           router.push('/');
         }, 2000);
-      } else if (registerUser.rejected.match(resultAction)) {
-        // Log adicional para depuração
-        console.error('Detalhes do erro no registro:', resultAction.payload);
       }
-      // Erro principal já é tratado pelo useEffect que observa o estado error
+      // Não precisamos mais tratar o rejected aqui pois o useEffect cuida disso
     } catch (error: any) {
       console.error('Erro inesperado no cadastro:', error);
       toast.error('Ocorreu um erro inesperado. Tente novamente mais tarde.');

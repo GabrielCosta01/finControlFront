@@ -18,9 +18,14 @@ const initialState: UserState = {
 
 // Função para formatar erros recebidos da API ou de rede
 const formatError = (error: any): string => {
+  // Se o erro já for uma string formatada, retorna ela
+  if (error instanceof Error) {
+    return error.message;
+  }
+
   // Erro de rede
   if (error?.code === 'ERR_NETWORK') {
-    return 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet ou tente novamente mais tarde.';
+    return 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
   }
   
   // Erro da API com mensagem específica
@@ -43,8 +48,12 @@ const formatError = (error: any): string => {
 
 // Extrair informações serializáveis do erro
 const serializeError = (error: any) => {
+  if (error instanceof Error) {
+    return error;
+  }
+
   return {
-    message: error?.message || 'Erro desconhecido',
+    message: error?.message || error?.response?.data?.message || 'Erro desconhecido',
     code: error?.code || 'UNKNOWN_ERROR',
     status: error?.response?.status,
     data: error?.response?.data
@@ -54,15 +63,14 @@ const serializeError = (error: any) => {
 // Thunk para registrar um novo usuário
 export const registerUser = createAsyncThunk(
   'users/register',
-  async (userData: { name: string; email: string; password: string; salary: number }, { rejectWithValue }) => {
+  async (userData: { name: string; email: string; password: string; confirmPassword: string; salary: number }, { rejectWithValue }) => {
     try {
-      // Usar a função de registro do arquivo auth.ts
       const response = await register(userData);
       return response;
     } catch (error: any) {
       console.error('Erro ao registrar usuário:', error);
-      // Retornar apenas dados serializáveis do erro
-      return rejectWithValue(serializeError(error));
+      // Garantir que apenas a mensagem de erro seja retornada
+      return rejectWithValue(formatError(error));
     }
   }
 );
@@ -91,9 +99,8 @@ const userSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload 
-          ? formatError(action.payload) 
-          : 'Falha ao registrar usuário. Tente novamente mais tarde.';
+        // O payload já é uma string formatada
+        state.error = action.payload as string;
       });
   },
 });

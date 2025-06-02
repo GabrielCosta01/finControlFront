@@ -250,3 +250,27 @@ export interface ReceivableResponseDto {
   createdAt: string;
   updatedAt: string;
 }
+
+// Transações
+export type TransactionType = 'DEPOSIT' | 'WITHDRAWAL';
+
+export interface TransactionCreateDto {
+  description: string;
+  amount: number;
+  type: TransactionType;
+  category_id?: string;
+  safe_id: string;
+  transaction_date: string;
+}
+
+export interface TransactionDto {
+  id: string;
+  description: string;
+  amount: number;
+  type: TransactionType;
+  category_id?: string;
+  safe_id: string;
+  transaction_date: string;
+  created_at: string;
+  updated_at: string;
+}

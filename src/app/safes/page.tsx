@@ -5,11 +5,12 @@ import { Vault as Safe, Bank, Category } from '@/api/entities/all';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { withAuth } from '@/components/withAuth';
+import { toast } from 'react-toastify';
 
 interface SafeData {
   id: string;
   name: string;
-  balance: number;
+  amount: number;
   currency: string;
   bank_id?: string;
   created_date: string;
@@ -54,7 +55,7 @@ function SafesPage() {
   const [newSafe, setNewSafe] = useState({
     name: "",
     description: "",
-    balance: "0,00",
+    amount: "0,00",
     currency: "BRL",
     bank_id: "none"
   });
@@ -77,7 +78,7 @@ function SafesPage() {
       // Converte os valores de centavos para decimal
       const formattedSafes = safesData.map(safe => ({
         ...safe,
-        balance: typeof safe.balance === 'number' ? safe.balance / 100 : 0
+        amount: typeof safe.amount === 'number' ? safe.amount / 100 : 0
       }));
       
       setSafes(formattedSafes);
@@ -100,19 +101,22 @@ function SafesPage() {
     return number.toFixed(2).replace('.', ',');
   };
 
-  const handleBalanceChange = (value: string) => {
+  const handleAmountChange = (value: string) => {
     // Remove caracteres não numéricos exceto vírgula
     const cleaned = value.replace(/[^\d,]/g, '');
     
     // Se estiver vazio, não atualiza
-    if (!cleaned) return;
+    if (!cleaned) {
+      setNewSafe(prev => ({ ...prev, amount: "0,00" }));
+      return;
+    }
 
     // Encontra a posição da vírgula
     const commaIndex = cleaned.indexOf(',');
     
-    // Se não tem vírgula ou é a última posição, usa o valor limpo
-    if (commaIndex === -1 || commaIndex === cleaned.length - 1) {
-      setNewSafe(prev => ({ ...prev, balance: cleaned }));
+    // Se não tem vírgula, adiciona ,00 ao final
+    if (commaIndex === -1) {
+      setNewSafe(prev => ({ ...prev, amount: `${cleaned},00` }));
       return;
     }
 
@@ -120,30 +124,29 @@ function SafesPage() {
     const integerPart = cleaned.slice(0, commaIndex);
     const decimalPart = cleaned.slice(commaIndex + 1);
 
-    // Limita a parte decimal a 2 dígitos
-    const formattedValue = `${integerPart},${decimalPart.slice(0, 2)}`;
-    setNewSafe(prev => ({ ...prev, balance: formattedValue }));
+    // Limita a parte decimal a 2 dígitos e completa com zeros se necessário
+    const formattedDecimal = (decimalPart + "00").slice(0, 2);
+    const formattedValue = `${integerPart || "0"},${formattedDecimal}`;
+    
+    setNewSafe(prev => ({ ...prev, amount: formattedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSafe.name.trim() || !newSafe.balance || !newSafe.description.trim()) return;
+    if (!newSafe.name.trim() || !newSafe.amount || !newSafe.description.trim()) return;
 
     try {
       // Converte o valor para número (troca vírgula por ponto)
-      const valueAsNumber = parseFloat(newSafe.balance.replace(',', '.'));
+      const valueAsNumber = parseFloat(newSafe.amount.replace(',', '.'));
       if (isNaN(valueAsNumber)) {
         console.error("Valor inválido para saldo inicial");
         return;
       }
 
-      // Converte para centavos
-      const amountInCents = Math.round(valueAsNumber * 100);
-
       const data = {
         name: newSafe.name.trim(),
         description: newSafe.description.trim(),
-        initialAmount: amountInCents,
+        initialAmount: valueAsNumber,
         currency: newSafe.currency,
       };
 
@@ -155,13 +158,19 @@ function SafesPage() {
       setNewSafe({
         name: "",
         description: "",
-        balance: "0,00",
+        amount: "0,00",
         currency: "BRL",
         bank_id: "none"
       });
       loadData();
-    } catch (error) {
+      toast.success("Cofre criado com sucesso!");
+    } catch (error: any) {
       console.error("Erro ao criar cofre:", error);
+      if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error("Não foi possível criar o cofre. Tente novamente mais tarde.");
+      }
     }
   };
 
@@ -240,19 +249,19 @@ function SafesPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="balance" className="text-base font-semibold text-gray-900 mb-1.5 block">
+                      <Label htmlFor="amount" className="text-base font-semibold text-gray-900 mb-1.5 block">
                         Saldo inicial <span className="text-purple-600">*</span>
                       </Label>
                       <div className="relative">
                         <Input
-                          id="balance"
+                          id="amount"
                           type="text"
                           inputMode="decimal"
-                          value={newSafe.balance}
-                          onChange={(e) => handleBalanceChange(e.target.value)}
+                          value={newSafe.amount}
+                          onChange={(e) => handleAmountChange(e.target.value)}
                           onBlur={(e) => {
                             const formatted = formatInputValue(e.target.value);
-                            setNewSafe(prev => ({ ...prev, balance: formatted }));
+                            setNewSafe(prev => ({ ...prev, amount: formatted }));
                           }}
                           placeholder="0,00"
                           className="w-full pl-8 bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500 placeholder:text-gray-500"
@@ -337,7 +346,7 @@ function SafesPage() {
                   </CardHeader>
                   <CardContent className="pt-4">
                     <div className="text-2xl font-bold text-gray-800">
-                      {formatCurrency(safe.balance, safe.currency)}
+                      {formatCurrency(safe.amount, safe.currency)}
                     </div>
                     {safe.bank_id && (
                       <p className="text-sm text-gray-700 mt-2">

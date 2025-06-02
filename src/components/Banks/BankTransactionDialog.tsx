@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Bank, Expense, ExtraIncome } from "@/api/entities/all";
-import { BankDto, CategoryDetailResponseDto, ExpenseCreateDto, ExtraIncomeDto } from "@/types";
+import type { BankDto, CategoryDetailResponseDto, ExpenseCreateDto } from "@/types/index.d";
+import type { ExtraIncomeCreateDto } from "@/types";
 import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Building2, Calendar } from "lucide-react";
 import { toast } from 'react-toastify';
 
@@ -83,11 +84,13 @@ export default function BankTransactionDialog({
 
         await Expense.create(expenseData);
       } else {
-        const incomeData: ExtraIncomeDto = {
+        const incomeData = {
+          name: description.trim(),
           description: description.trim(),
           amount: parseFloat(amount),
           date: date,
-          categoryId
+          categoryId: categoryId,
+          bankId: bank.id
         };
 
         await ExtraIncome.create(incomeData);

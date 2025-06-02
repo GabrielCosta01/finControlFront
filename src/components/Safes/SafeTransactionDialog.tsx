@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,12 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Vault } from "@/api/entities/all";
 import { PiggyBank, ArrowUpCircle, ArrowDownCircle, Loader2 } from "lucide-react";
 import axiosClient from "@/api/axiosClient";
 import { ROUTES } from "@/api/apiRoutes";
+import { toast } from 'react-toastify';
+import type { TransactionType } from "@/types";
 
 interface SafeTransactionDialogProps {
   open: boolean;
@@ -27,10 +30,10 @@ interface SafeTransactionDialogProps {
   safe: {
     id: string;
     name: string;
-    balance: number;
+    amount: number;
     currency: string;
   };
-  type: "DEPOSIT" | "WITHDRAWAL";
+  type: TransactionType;
   categories: Array<{
     id: string;
     description: string;
@@ -48,8 +51,18 @@ export default function SafeTransactionDialog({
 }: SafeTransactionDialogProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>("_none");
   const [loading, setLoading] = useState(false);
+
+  // Resetar os campos quando o diálogo é fechado
+  useEffect(() => {
+    if (!open) {
+      setDescription("");
+      setAmount("");
+      setCategoryId("_none");
+      setLoading(false);
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,32 +70,38 @@ export default function SafeTransactionDialog({
 
     setLoading(true);
     try {
-      // Update safe balance
-      const newBalance = type === "DEPOSIT" 
-        ? safe.balance + parseFloat(amount)
-        : safe.balance - parseFloat(amount);
-      
-      // Registramos a transação
-      await axiosClient.post(ROUTES.TRANSACTIONS.BASE, {
-        description,
-        amount: parseFloat(amount),
-        type,
-        category_id: categoryId || undefined,
-        safe_id: safe.id,
-        transaction_date: new Date().toISOString()
-      });
+      const amountValue = parseFloat(amount);
+      if (isNaN(amountValue)) {
+        throw new Error("Valor inválido");
+      }
 
-      // Atualizamos o saldo do cofre
-      await Vault.update(safe.id, {
+      // Calculamos o novo saldo
+      const newAmount = type === "DEPOSIT" 
+        ? safe.amount + amountValue
+        : safe.amount - amountValue;
+
+      if (type === "WITHDRAWAL" && newAmount < 0) {
+        throw new Error("Saldo insuficiente para realizar o saque");
+      }
+
+      // Atualizamos o cofre com o novo saldo
+      await axiosClient.put(`${ROUTES.VAULTS.BASE}/${safe.id}`, {
         name: safe.name,
+        description: description.trim(),
         currency: safe.currency
       });
 
       onTransactionComplete();
       onClose();
+      toast.success(`${type === "DEPOSIT" ? "Depósito" : "Saque"} realizado com sucesso!`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing transaction:", error);
+      if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error(`Erro ao realizar ${type === "DEPOSIT" ? "depósito" : "saque"}. Tente novamente.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -105,6 +124,11 @@ export default function SafeTransactionDialog({
               {dialogTitle} no cofre <span className="text-purple-700">{safe?.name}</span>
             </span>
           </DialogTitle>
+          <DialogDescription className="text-sm text-gray-600">
+            {type === "DEPOSIT" 
+              ? "Adicione um valor ao seu cofre para guardar dinheiro" 
+              : "Retire um valor do seu cofre para usar o dinheiro guardado"}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-6">

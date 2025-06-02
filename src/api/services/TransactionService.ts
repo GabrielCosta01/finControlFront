@@ -1,11 +1,12 @@
 import axiosClient from '../axiosClient';
 import { ROUTES } from '../apiRoutes';
+import type { TransactionCreateDto, TransactionDto, TransactionUpdateDto } from '../../types';
 
 /**
  * Lista todas as transações do usuário autenticado
- * @returns {Promise<Array>} Lista de transações
+ * @returns {Promise<TransactionDto[]>} Lista de transações
  */
-export const getTransactions = async () => {
+export const getTransactions = async (): Promise<TransactionDto[]> => {
   const response = await axiosClient.get(ROUTES.TRANSACTIONS.BASE);
   return response.data;
 };
@@ -13,30 +14,37 @@ export const getTransactions = async () => {
 /**
  * Busca uma transação específica
  * @param {string} id ID da transação
- * @returns {Promise<Object>} Dados da transação
+ * @returns {Promise<TransactionDto>} Dados da transação
  */
-export const getTransaction = async (id) => {
+export const getTransaction = async (id: string): Promise<TransactionDto> => {
   const response = await axiosClient.get(ROUTES.TRANSACTIONS.DETAIL(id));
   return response.data;
 };
 
 /**
  * Cria uma nova transação
- * @param {Object} data Dados da transação
- * @returns {Promise<Object>} Dados da transação criada
+ * @param {TransactionCreateDto} data Dados da transação
+ * @returns {Promise<TransactionDto>} Dados da transação criada
  */
-export const addTransaction = async (data) => {
-  const response = await axiosClient.post(ROUTES.TRANSACTIONS.BASE, data);
-  return response.data;
+export const addTransaction = async (data: TransactionCreateDto): Promise<TransactionDto> => {
+  try {
+    const response = await axiosClient.post(ROUTES.TRANSACTIONS.BASE, data);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    throw error;
+  }
 };
 
 /**
  * Atualiza uma transação existente
  * @param {string} id ID da transação
- * @param {Object} data Dados atualizados da transação
- * @returns {Promise<Object>} Dados da transação atualizada
+ * @param {TransactionUpdateDto} data Dados atualizados da transação
+ * @returns {Promise<TransactionDto>} Dados da transação atualizada
  */
-export const updateTransaction = async (id, data) => {
+export const updateTransaction = async (id: string, data: TransactionUpdateDto): Promise<TransactionDto> => {
   const response = await axiosClient.put(ROUTES.TRANSACTIONS.DETAIL(id), data);
   return response.data;
 };
@@ -46,6 +54,6 @@ export const updateTransaction = async (id, data) => {
  * @param {string} id ID da transação
  * @returns {Promise<void>}
  */
-export const deleteTransaction = async (id) => {
+export const deleteTransaction = async (id: string): Promise<void> => {
   await axiosClient.delete(ROUTES.TRANSACTIONS.DETAIL(id));
 }; 

@@ -20,8 +20,15 @@ class VaultService {
   }
 
   async create(data: VaultCreateDto): Promise<VaultDto> {
-    const response = await axiosClient.post(ROUTES.VAULTS.BASE, data);
-    return response.data;
+    try {
+      const response = await axiosClient.post(ROUTES.VAULTS.BASE, data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
   }
 
   async update(id: string, data: VaultUpdateDto): Promise<VaultDto> {

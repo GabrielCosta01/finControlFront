@@ -198,7 +198,7 @@ function BanksPage() {
                     <p className="text-sm text-gray-600">Total em Bancos</p>
                     <p className="text-xl font-bold text-gray-900 break-words">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                        .format(banks.reduce((total, bank) => total + bank.currentBalance, 0))}
+                        .format(banks.reduce((total, bank) => total + bank.balance, 0))}
                     </p>
                   </div>
                   <div className="space-y-1 bg-gray-50/50 p-4 rounded-lg border border-gray-100/50">
@@ -234,7 +234,7 @@ function BanksPage() {
                       </Button>
                     </div>
                     <CardDescription className="text-sm text-gray-500 mt-1">
-                      Última atualização: {formatDate(bank.updatedAt)}
+                      Última atualização: {formatDate(bank.updated_date)}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-6">
@@ -247,7 +247,7 @@ function BanksPage() {
                           </p>
                           <p className="text-lg font-semibold text-gray-900">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                              .format(bank.totalIncome)}
+                              .format(bank.balance > 0 ? bank.balance : 0)}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -257,15 +257,15 @@ function BanksPage() {
                           </p>
                           <p className="text-lg font-semibold text-gray-900">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                              .format(bank.totalExpense)}
+                              .format(bank.balance < 0 ? Math.abs(bank.balance) : 0)}
                           </p>
                         </div>
                       </div>
                       <div className="pt-4 border-t border-gray-100">
                         <p className="text-sm text-gray-500 mb-1">Saldo Atual</p>
-                        <p className={`text-2xl font-bold ${bank.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-2xl font-bold ${bank.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                            .format(bank.currentBalance)}
+                            .format(bank.balance)}
                         </p>
                       </div>
                     </div>
