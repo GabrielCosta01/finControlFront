@@ -10,7 +10,7 @@ import { toast } from 'react-toastify';
 interface SafeData {
   id: string;
   name: string;
-  amount: number;
+  balance: number;
   currency: string;
   bank_id?: string;
   created_date: string;
@@ -55,7 +55,7 @@ function SafesPage() {
   const [newSafe, setNewSafe] = useState({
     name: "",
     description: "",
-    amount: "0,00",
+    balance: "0,00",
     currency: "BRL",
     bank_id: "none"
   });
@@ -78,7 +78,7 @@ function SafesPage() {
       // Converte os valores de centavos para decimal
       const formattedSafes = safesData.map(safe => ({
         ...safe,
-        amount: typeof safe.amount === 'number' ? safe.amount / 100 : 0
+        balance: typeof safe.balance === 'number' ? safe.balance / 100 : 0
       }));
       
       setSafes(formattedSafes);
@@ -101,13 +101,13 @@ function SafesPage() {
     return number.toFixed(2).replace('.', ',');
   };
 
-  const handleAmountChange = (value: string) => {
+  const handleBalanceChange = (value: string) => {
     // Remove caracteres não numéricos exceto vírgula
     const cleaned = value.replace(/[^\d,]/g, '');
     
     // Se estiver vazio, não atualiza
     if (!cleaned) {
-      setNewSafe(prev => ({ ...prev, amount: "0,00" }));
+      setNewSafe(prev => ({ ...prev, balance: "0,00" }));
       return;
     }
 
@@ -116,7 +116,7 @@ function SafesPage() {
     
     // Se não tem vírgula, adiciona ,00 ao final
     if (commaIndex === -1) {
-      setNewSafe(prev => ({ ...prev, amount: `${cleaned},00` }));
+      setNewSafe(prev => ({ ...prev, balance: `${cleaned},00` }));
       return;
     }
 
@@ -128,16 +128,16 @@ function SafesPage() {
     const formattedDecimal = (decimalPart + "00").slice(0, 2);
     const formattedValue = `${integerPart || "0"},${formattedDecimal}`;
     
-    setNewSafe(prev => ({ ...prev, amount: formattedValue }));
+    setNewSafe(prev => ({ ...prev, balance: formattedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSafe.name.trim() || !newSafe.amount || !newSafe.description.trim()) return;
+    if (!newSafe.name.trim() || !newSafe.balance || !newSafe.description.trim()) return;
 
     try {
       // Converte o valor para número (troca vírgula por ponto)
-      const valueAsNumber = parseFloat(newSafe.amount.replace(',', '.'));
+      const valueAsNumber = parseFloat(newSafe.balance.replace(',', '.'));
       if (isNaN(valueAsNumber)) {
         console.error("Valor inválido para saldo inicial");
         return;
@@ -158,7 +158,7 @@ function SafesPage() {
       setNewSafe({
         name: "",
         description: "",
-        amount: "0,00",
+        balance: "0,00",
         currency: "BRL",
         bank_id: "none"
       });
@@ -249,19 +249,19 @@ function SafesPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="amount" className="text-base font-semibold text-gray-900 mb-1.5 block">
+                      <Label htmlFor="balance" className="text-base font-semibold text-gray-900 mb-1.5 block">
                         Saldo inicial <span className="text-purple-600">*</span>
                       </Label>
                       <div className="relative">
                         <Input
-                          id="amount"
+                          id="balance"
                           type="text"
                           inputMode="decimal"
-                          value={newSafe.amount}
-                          onChange={(e) => handleAmountChange(e.target.value)}
+                          value={newSafe.balance}
+                          onChange={(e) => handleBalanceChange(e.target.value)}
                           onBlur={(e) => {
                             const formatted = formatInputValue(e.target.value);
-                            setNewSafe(prev => ({ ...prev, amount: formatted }));
+                            setNewSafe(prev => ({ ...prev, balance: formatted }));
                           }}
                           placeholder="0,00"
                           className="w-full pl-8 bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500 placeholder:text-gray-500"
@@ -346,7 +346,7 @@ function SafesPage() {
                   </CardHeader>
                   <CardContent className="pt-4">
                     <div className="text-2xl font-bold text-gray-800">
-                      {formatCurrency(safe.amount, safe.currency)}
+                      {formatCurrency(safe.balance, safe.currency)}
                     </div>
                     {safe.bank_id && (
                       <p className="text-sm text-gray-700 mt-2">

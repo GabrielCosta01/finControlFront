@@ -39,8 +39,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     { icon: <FaTags />, label: 'Categorias', path: '/categories', page: 'Categories' },
     { icon: <FaWallet />, label: 'Bancos', path: '/banks', page: 'Banks' },
     { icon: <FaPiggyBank />, label: 'Cofres', path: '/safes', page: 'Safes' },
-    { icon: <FaArrowDown />, label: 'Contas a Pagar', path: '/payables', page: 'Payables' },
-    { icon: <FaArrowUp />, label: 'Contas a Receber', path: '/receivables', page: 'Receivables' },
     { divider: true },
     { icon: <FaFileAlt />, label: 'Relatório Contas a Pagar', path: '/payables-report', page: 'PayablesReport' },
     { icon: <FaFileAlt />, label: 'Relatório Contas a Receber', path: '/receivables-report', page: 'ReceivablesReport' },

@@ -320,43 +320,43 @@ function DashboardPage() {
         </Card>
       </div>
 
-      {/* Últimas Transações e Próximos Vencimentos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Próximas Rendas Extras */}
+      <div className="grid grid-cols-1 gap-6">
         <Card className="bg-white shadow-lg border-0">
           <CardHeader className="border-b bg-gray-50/50">
             <CardTitle className="text-xl font-semibold flex items-center gap-2">
-              <ArrowUpCircle className="w-5 h-5 text-blue-500" />
-              Últimas Transações
+              <ArrowUpCircle className="w-5 h-5 text-green-500" />
+              Próximas Rendas Extras
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            {upcomingExpenses.length === 0 ? (
+            {upcomingExtraIncomes.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                Nenhuma despesa pendente
+                Nenhuma renda extra pendente
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Descrição</TableHead>
-                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Data</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {upcomingExpenses.map(expense => (
-                    <TableRow key={expense.id}>
+                  {upcomingExtraIncomes.map(income => (
+                    <TableRow key={income.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          <ArrowDownCircle className="w-4 h-4 text-red-500" />
-                          {expense.description}
+                          <ArrowUpCircle className="w-4 h-4 text-green-500" />
+                          {income.description}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
+                        {format(new Date(income.due_date), "dd 'de' MMMM", { locale: ptBR })}
                       </TableCell>
-                      <TableCell className="text-red-600 font-medium text-right">
-                        {formatCurrency(expense.amount)}
+                      <TableCell className="text-green-600 font-medium text-right">
+                        {formatCurrency(income.amount_total)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -365,95 +365,6 @@ function DashboardPage() {
             )}
           </CardContent>
         </Card>
-        <div className="space-y-6">
-          <Card className="bg-white shadow-lg border-0">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <ArrowDownCircle className="w-5 h-5 text-red-500" />
-                Próximas Despesas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {upcomingExpenses.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  Nenhuma despesa pendente
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {upcomingExpenses.map(expense => (
-                      <TableRow key={expense.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <ArrowDownCircle className="w-4 h-4 text-red-500" />
-                            {expense.description}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(expense.due_date), "dd 'de' MMMM", { locale: ptBR })}
-                        </TableCell>
-                        <TableCell className="text-red-600 font-medium text-right">
-                          {formatCurrency(expense.amount)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white shadow-lg border-0">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <ArrowUpCircle className="w-5 h-5 text-green-500" />
-                Próximas Rendas Extras
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {upcomingExtraIncomes.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  Nenhuma renda extra pendente
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {upcomingExtraIncomes.map(income => (
-                      <TableRow key={income.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <ArrowUpCircle className="w-4 h-4 text-green-500" />
-                            {income.description}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(income.due_date), "dd 'de' MMMM", { locale: ptBR })}
-                        </TableCell>
-                        <TableCell className="text-green-600 font-medium text-right">
-                          {formatCurrency(income.amount_total)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </>
   );
