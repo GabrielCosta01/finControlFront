@@ -10,7 +10,7 @@ import { toast } from 'react-toastify';
 interface SafeData {
   id: string;
   name: string;
-  balance: number;
+  amount: number;
   currency: string;
   bank_id?: string;
   created_date: string;
@@ -78,7 +78,7 @@ function SafesPage() {
       // Converte os valores de centavos para decimal
       const formattedSafes = safesData.map(safe => ({
         ...safe,
-        balance: typeof safe.balance === 'number' ? safe.balance / 100 : 0
+        amount: typeof safe.amount === 'number' ? safe.amount / 100 : 0
       }));
       
       setSafes(formattedSafes);
@@ -346,7 +346,7 @@ function SafesPage() {
                   </CardHeader>
                   <CardContent className="pt-4">
                     <div className="text-2xl font-bold text-gray-800">
-                      {formatCurrency(safe.balance, safe.currency)}
+                      {formatCurrency(safe.amount, safe.currency)}
                     </div>
                     {safe.bank_id && (
                       <p className="text-sm text-gray-700 mt-2">
