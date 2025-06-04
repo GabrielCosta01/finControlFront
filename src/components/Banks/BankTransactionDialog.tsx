@@ -26,7 +26,7 @@ import { toast } from 'react-toastify';
 interface BankTransactionDialogProps {
   open: boolean;
   onClose: () => void;
-  bank: Pick<BankDto, 'id' | 'name' | 'currentBalance'>;
+  bank: Pick<BankDto, 'id' | 'name' | 'currentBalance' | 'totalIncome' | 'totalExpense'>;
   type: "DEPOSIT" | "WITHDRAWAL";
   categories: CategoryDetailResponseDto[];
   onTransactionComplete: () => void;
@@ -72,38 +72,45 @@ export default function BankTransactionDialog({
 
     setLoading(true);
     try {
+      const transactionAmount = parseFloat(amount);
+
       // Create transaction record based on type
       if (type === "WITHDRAWAL") {
         const expenseData: ExpenseCreateDto = {
           name: description.trim(),
-          value: parseFloat(amount),
+          value: transactionAmount,
           bankId: bank.id,
           expenseDate: date,
           categoryId
         };
 
         await Expense.create(expenseData);
+
+        // Update bank balance for withdrawal
+        await Bank.update(bank.id, {
+          balance: bank.currentBalance - transactionAmount,
+          currentBalance: bank.currentBalance - transactionAmount,
+          totalExpense: (bank.totalExpense || 0) + transactionAmount
+        });
       } else {
         const incomeData = {
           name: description.trim(),
           description: description.trim(),
-          amount: parseFloat(amount),
+          amount: transactionAmount,
           date: date,
           categoryId: categoryId,
           bankId: bank.id
         };
 
         await ExtraIncome.create(incomeData);
-      }
 
-      // Update bank balance
-      const newBalance = type === "DEPOSIT" 
-        ? bank.currentBalance + parseFloat(amount)
-        : bank.currentBalance - parseFloat(amount);
-      
-      await Bank.update(bank.id, {
-        balance: newBalance
-      });
+        // Update bank balance for deposit
+        await Bank.update(bank.id, {
+          balance: bank.currentBalance + transactionAmount,
+          currentBalance: bank.currentBalance + transactionAmount,
+          totalIncome: (bank.totalIncome || 0) + transactionAmount
+        });
+      }
 
       toast.success(`${type === "DEPOSIT" ? "Depósito" : "Saque"} realizado com sucesso!`);
       onTransactionComplete();

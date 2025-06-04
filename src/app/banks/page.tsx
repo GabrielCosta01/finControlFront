@@ -16,6 +16,10 @@ import { Plus, Building2, ArrowUpCircle, ArrowDownCircle, RefreshCw, TrendingUp,
 import BankTransactionDialog from '@/components/Banks/BankTransactionDialog';
 import { toast } from 'react-toastify';
 import { withAuth } from '@/components/withAuth';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '@/store';
+import { setCurrentUser } from '@/features/userSlice';
+import UserService from '@/api/services/UserService';
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return "Data não disponível";
@@ -49,6 +53,25 @@ function BanksPage() {
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
   const [currentBank, setCurrentBank] = useState<BankDto | null>(null);
   const [transactionType, setTransactionType] = useState<'DEPOSIT' | 'WITHDRAWAL' | null>(null);
+  
+  const dispatch = useDispatch();
+  const currentUser = useSelector((state: RootState) => state.users.currentUser);
+  const auth = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        if (auth.isAuthenticated && !currentUser) {
+          const userData = await UserService.getById('me');
+          dispatch(setCurrentUser(userData));
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, [auth.isAuthenticated, currentUser, dispatch]);
 
   useEffect(() => {
     loadData();
@@ -79,9 +102,19 @@ function BanksPage() {
     if (!newBank.name.trim() || !newBank.balance) return;
 
     try {
+      const initialBalance = parseFloat(newBank.balance);
+      if (isNaN(initialBalance)) {
+        toast.error("Por favor, insira um valor válido para o saldo inicial");
+        return;
+      }
+
       await Bank.create({
         name: newBank.name.trim(),
-        initialBalance: parseFloat(newBank.balance)
+        initialBalance: initialBalance,
+        balance: initialBalance,
+        currentBalance: initialBalance,
+        totalIncome: initialBalance > 0 ? initialBalance : 0,
+        totalExpense: initialBalance < 0 ? Math.abs(initialBalance) : 0
       });
 
       toast.success("Banco criado com sucesso!");
@@ -122,15 +155,21 @@ function BanksPage() {
             <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Bancos</h1>
             <p className="mt-1 text-gray-500">Gerencie suas contas bancárias e movimentações financeiras</p>
           </div>
-          <Button
-            onClick={loadData}
-            variant="outline"
-            size="sm"
-            className="text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 transition-colors duration-200 shadow-sm"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-900">{currentUser?.name || 'Usuário'}</p>
+              <p className="text-xs text-gray-500">{currentUser?.email || 'usuario@exemplo.com'}</p>
+            </div>
+            <Button
+              onClick={loadData}
+              variant="outline"
+              size="sm"
+              className="text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 transition-colors duration-200 shadow-sm"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -196,9 +235,9 @@ function BanksPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1 bg-blue-50/50 p-4 rounded-lg border border-blue-100/50">
                     <p className="text-sm text-gray-600">Total em Bancos</p>
-                    <p className="text-xl font-bold text-gray-900 break-words">
+                    <p className={`text-xl font-bold ${banks.reduce((total, bank) => total + (bank.currentBalance || 0), 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                        .format(banks.reduce((total, bank) => total + bank.balance, 0))}
+                        .format(banks.reduce((total, bank) => total + (bank.currentBalance || 0), 0))}
                     </p>
                   </div>
                   <div className="space-y-1 bg-gray-50/50 p-4 rounded-lg border border-gray-100/50">
@@ -247,7 +286,7 @@ function BanksPage() {
                           </p>
                           <p className="text-lg font-semibold text-gray-900">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                              .format(bank.balance > 0 ? bank.balance : 0)}
+                              .format(bank.totalIncome || 0)}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -257,16 +296,18 @@ function BanksPage() {
                           </p>
                           <p className="text-lg font-semibold text-gray-900">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                              .format(bank.balance < 0 ? Math.abs(bank.balance) : 0)}
+                              .format(bank.totalExpense || 0)}
                           </p>
                         </div>
                       </div>
                       <div className="pt-4 border-t border-gray-100">
-                        <p className="text-sm text-gray-500 mb-1">Saldo Atual</p>
-                        <p className={`text-2xl font-bold ${bank.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                            .format(bank.balance)}
-                        </p>
+                        <div className="flex justify-between items-center">
+                          <p className="text-sm text-gray-600">Saldo Atual</p>
+                          <p className={`text-lg font-bold ${bank.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                              .format(bank.currentBalance || 0)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </CardContent>

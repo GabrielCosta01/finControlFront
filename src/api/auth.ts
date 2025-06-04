@@ -27,6 +27,37 @@ interface RegisterResponse {
   updatedAt: string;
 }
 
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  salary?: number;
+}
+
+export const logout = async (): Promise<void> => {
+  try {
+    // Opcional: enviar requisição para logout no servidor, se existir essa rota
+    // await axiosClient.post(ROUTES.AUTH.LOGOUT);
+    
+    // Remover token do localStorage
+    localStorage.removeItem('authToken');
+  } catch (error) {
+    console.error('Error during logout:', error);
+    // Mesmo com erro, remover token local para garantir o logout
+    localStorage.removeItem('authToken');
+  }
+};
+
+export const getCurrentUser = async (): Promise<UserProfile> => {
+  try {
+    const response = await axiosClient.get(ROUTES.AUTH.ME);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error;
+  }
+};
+
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   try {
     const response = await axiosClient.post(ROUTES.AUTH.LOGIN, credentials);
