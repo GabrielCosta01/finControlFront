@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import { FaTachometerAlt, FaTags, FaWallet, FaPiggyBank, FaArrowDown, FaArrowUp, FaFileAlt, FaChartBar, FaBars, FaTimes } from 'react-icons/fa';
+import { FaTachometerAlt, FaTags, FaWallet, FaPiggyBank, FaArrowDown, FaArrowUp, FaFileAlt, FaChartBar, FaBars, FaTimes, FaSignOutAlt } from 'react-icons/fa';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -25,24 +26,31 @@ interface DividerItem {
   divider: boolean;
 }
 
-type MenuItemType = MenuItem | DividerItem;
+interface LogoutItem extends MenuItemBase {
+  action: () => void;
+}
+
+type MenuItemType = MenuItem | DividerItem | LogoutItem;
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const auth = useSelector((state: RootState) => state.auth);
   const [currentPage, setCurrentPage] = useState('');
   const pathname = usePathname() || '';
-
+  const { isAuthenticated, currentUser, logout } = useAuth();
+  
   // Define the menu items
   const menuItems: MenuItemType[] = [
     { icon: <FaTachometerAlt />, label: 'Dashboard', path: '/dashboard', page: 'Dashboard' },
     { icon: <FaTags />, label: 'Categorias', path: '/categories', page: 'Categories' },
     { icon: <FaWallet />, label: 'Bancos', path: '/banks', page: 'Banks' },
     { icon: <FaPiggyBank />, label: 'Cofres', path: '/safes', page: 'Safes' },
+    { icon: <FaArrowUp />, label: 'Rendas Extras', path: '/extra-income', page: 'ExtraIncome' },
     { divider: true },
-    { icon: <FaFileAlt />, label: 'Relatório Contas a Pagar', path: '/payables-report', page: 'PayablesReport' },
-    { icon: <FaFileAlt />, label: 'Relatório Contas a Receber', path: '/receivables-report', page: 'ReceivablesReport' },
-    { icon: <FaChartBar />, label: 'Relatório Financeiro', path: '/financial-report', page: 'FinancialReport' },
+    // { icon: <FaFileAlt />, label: 'Relatório Contas a Pagar', path: '/payables-report', page: 'PayablesReport' },
+    // { icon: <FaFileAlt />, label: 'Relatório Contas a Receber', path: '/receivables-report', page: 'ReceivablesReport' },
+    { icon: <FaChartBar />, label: 'Relatório Mensal', path: '/financial-report', page: 'FinancialReport' },
+    { divider: true },
+    { icon: <FaSignOutAlt />, label: 'Sair', action: logout },
   ];
 
   // Update current page based on pathname
@@ -56,10 +64,14 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     }
   }, [pathname]);
 
-  // Placeholder para informações do usuário
-  const userInitial = 'U';
-  const userName = 'Usuário';
-  const userEmail = 'usuario@exemplo.com';
+  // Obter a primeira letra do nome para o avatar (ou "U" como fallback)
+  const userInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U';
+  const userName = currentUser?.name || 'Usuário';
+  const userEmail = currentUser?.email || 'usuario@exemplo.com';
+
+  // Log de diagnóstico para depuração
+  console.log('ClientLayout render - currentUser:', currentUser);
+  console.log('ClientLayout render - isAuthenticated:', isAuthenticated);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -84,6 +96,14 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
           {menuItems.map((item, idx) => 
             'divider' in item && item.divider ? (
               <div key={idx} className="h-px bg-gray-200 my-4" />
+            ) : 'action' in item ? (
+              <button
+                key={idx}
+                onClick={item.action}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors w-full text-left"
+              >
+                {item.icon}<span>{item.label}</span>
+              </button>
             ) : (
               <Link 
                 key={idx} 
