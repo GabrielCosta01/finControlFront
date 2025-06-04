@@ -11,14 +11,14 @@ export const ROUTES = {
     // Rotas de autenticação protegidas (com prefixo /api)
     LOGOUT: `${BASE_PATH}/auth/logout`,
     FORGOT_PASSWORD: `${BASE_PATH}/auth/forgot-password`,
-    RESET_PASSWORD: `${BASE_PATH}/auth/reset-password`,
-    ME: `${BASE_PATH}/auth/me`,
+    RESET_PASSWORD: `${BASE_PATH}/auth/reset-password`
   },
   
   // Usuários
   USERS: {
     BASE: `${BASE_PATH}/users`,
     DETAIL: (id) => `${BASE_PATH}/users/${id}`,
+    CURRENT: `${BASE_PATH}/users/current`
   },
   
   // Categorias

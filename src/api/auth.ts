@@ -50,8 +50,23 @@ export const logout = async (): Promise<void> => {
 
 export const getCurrentUser = async (): Promise<UserProfile> => {
   try {
-    const response = await axiosClient.get(ROUTES.AUTH.ME);
-    return response.data;
+    // Primeiro vamos tentar pegar o ID do usuário do token JWT
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('Token não encontrado');
+    }
+
+    // Buscar os dados do usuário usando a rota de usuários
+    const response = await axiosClient.get(ROUTES.USERS.BASE);
+    const users = response.data;
+    
+    // Como a rota retorna todos os usuários, vamos pegar o primeiro
+    // Isso é temporário até termos uma rota específica para o usuário atual
+    if (users && users.length > 0) {
+      return users[0];
+    }
+    
+    throw new Error('Usuário não encontrado');
   } catch (error) {
     console.error('Error fetching user profile:', error);
     throw error;
