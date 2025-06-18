@@ -8,11 +8,19 @@ import axios, {
 // Usar a variável de ambiente ou fallback para localhost em desenvolvimento
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fincontrolback-n4bs.onrender.com';
 
+// Garantir que a URL tenha o protocolo correto
+const getBaseURL = () => {
+  if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
+    return API_BASE_URL;
+  }
+  return `https://${API_BASE_URL}`;
+};
+
 // Log para depuração da URL base
-console.log('API_BASE_URL:', API_BASE_URL);
+console.log('API_BASE_URL:', getBaseURL());
 
 const axiosClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -60,8 +68,19 @@ const processRequestData = (data: any): any => {
 
 axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+    // Construir a URL completa manualmente
+    const baseURL = getBaseURL();
+    const url = config.url || '';
+    
+    // Se a URL não começar com http, adicionar a baseURL
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      config.url = `${baseURL}${url}`;
+    }
+    
     // Log para depuração de requisições
-    console.log('Request URL:', `${config.baseURL}${config.url}`);
+    console.log('Request URL:', config.url);
+    console.log('Base URL:', baseURL);
+    console.log('URL Path:', url);
     
     // Não adicionar token para rotas públicas ou rotas de autenticação
     if (!config.url?.includes('/auth/login') && 
